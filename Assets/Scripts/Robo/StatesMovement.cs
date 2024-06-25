@@ -170,7 +170,7 @@ public class State_BoostForward : State
     {
         sm.animator.run(22);
         changeWeapon(sm);
-        //sm.movement.rb.velocity = Vector3.zero;
+        sm.movement.rb.velocity = Vector3.zero;
         sm.movement.boostCost = -5;
     }
 

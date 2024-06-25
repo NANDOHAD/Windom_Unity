@@ -32,9 +32,10 @@ public class RoboLoader : MonoBehaviour
         {
             rs.ani.load(Path.Combine(folder, "Script.ani"));
             rs.buildStructure();
+            Debug.Log("Load ANI File");
         }
         else
-            Debug.Log("Missing File");
+            Debug.Log("Missing ANI File");
         MechaAnimator anim = Robo.GetComponent<MechaAnimator>();
         MechaMovement mm = Robo.GetComponent<MechaMovement>();
         StateManager sm = Robo.GetComponent<StateManager>();
@@ -44,7 +45,16 @@ public class RoboLoader : MonoBehaviour
         RoboData = new SPT_Data();
         RoboData.mm = mm;
         RoboData.buildInpterpreter();
-        RoboData.readSPT(Path.Combine(folder, "Script.spt"));
+        if (File.Exists(Path.Combine(folder, "Script.spt")))
+        {
+            RoboData.readSPT(Path.Combine(folder, "Script.spt"));
+            Debug.Log("Load SPT File");
+            Debug.Log(RoboData.burnerList);
+            Debug.Log(RoboData.burnerList.Count);
+        }
+        else
+            Debug.Log("Missing SPT File");
+        
         //attach thrusters data
         int prtCount = rs.parts.Count;
         for (int i = 0; i < RoboData.burnerList.Count; i++)
@@ -52,8 +62,7 @@ public class RoboLoader : MonoBehaviour
             for (int j = 0; j < prtCount; j++)
             {
                 if (RoboData.burnerList[i].part == rs.parts[j].name)
-                {
-                    
+                {                 
                     GameObject n = Instantiate<GameObject>(Thruster);
                     
                 

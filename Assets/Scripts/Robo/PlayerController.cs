@@ -7,8 +7,11 @@ public class PlayerController : MonoBehaviour
     PlayerControls input;
     StateManager stateManager;
     MechaMovement mm;
+    ScriptHook sh;
+    Vector2 boostInput; // ブーストボタンを押したときの移動入力値を保存する変数
     bool initialBoostTap = false;
     bool initialStepTap = false;
+    bool ForceUpdateDirection = false;
     void Awake()
     {
         input = new PlayerControls();
@@ -19,20 +22,26 @@ public class PlayerController : MonoBehaviour
     void Start()
     {
         input.Player.Movement.performed += ctx => { 
+            
             mm.directionalInput = ctx.ReadValue<Vector2>(); 
             stateManager.isMoving = true;
             stateManager.isStanding = false;
             if (initialStepTap)
+            {
                 stateManager.isStep = true;
                 stateManager.isStanding = false;
+            }
         };
         input.Player.Movement.canceled += ctx => { mm.directionalInput = Vector2.zero; stateManager.isMoving = false; stateManager.isStep = false; stateManager.isStanding = true;};
         input.Player.Boost.performed += ctx => {
             stateManager.isBoostUp = true;
             stateManager.isStanding = false;
             if (initialBoostTap)
+            {
                 stateManager.isBoostForward = true;
                 stateManager.isStanding = false;
+            }            // ブースト時の移動処理を追加
+            ForceUpdateDirection = true;
         };
         input.Player.Boost.canceled += ctx => { stateManager.isBoostUp = false; stateManager.isBoostForward = false; stateManager.isStanding = true;};
         input.Player.BoostForward.performed += ctx => { initialBoostTap = true; StartCoroutine(boostTapCancel()); };

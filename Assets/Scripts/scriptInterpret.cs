@@ -15,7 +15,7 @@ public delegate void scriptSetVar(scriptVar value);
 public delegate scriptVar scriptGetVar();
 
 
-public class scriptInterpreter
+public class scriptInterpret
 {
     string[] lines;
     int lineLoc = 0;

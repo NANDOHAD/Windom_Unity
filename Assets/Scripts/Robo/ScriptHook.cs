@@ -12,7 +12,7 @@ public class ScriptHook : MonoBehaviour
     // Start is called before the first frame update
     public void setup()
     {
-        ma.scriptRunner = new scriptInterpreter();
+        ma.scriptRunner = new scriptInterpret();
         //register scripts
         ma.scriptRunner.registerFunction("Move=", MoveSet);
         ma.scriptRunner.registerFunction("Force=", ForceSet);
@@ -35,11 +35,32 @@ public class ScriptHook : MonoBehaviour
 
     public void MoveSet(scriptVar[] values)
     {
+        Debug.Log("Moveset");
+        Debug.Log(values[0].num + values[1].num + values[2].num);
+        // 配列の要素が文字列の場合、0 に変換
+        for (int i = 0; i < values.Length; i++)
+        {
+            if (values[i].type == scriptVarType.STR)
+            {
+                values[i].num = 0;
+            }
+        }
         mm.moveSpeed = new Vector3(values[0].num, values[1].num, values[2].num);
+
     }
 
     public void ForceSet(scriptVar[] values)
     {
+        Debug.Log("Forceset");
+        Debug.Log(values[0].num + values[1].num + values[2].num);
+        // 配列の要素が文字列の場合、0 に変換
+        for (int i = 0; i < values.Length; i++)
+        {
+            if (values[i].type == scriptVarType.STR)
+            {
+                values[i].num = 0;
+            }
+        }
         mm.forceSpeed = new Vector3(values[0].num, values[1].num, values[2].num);
     }
 

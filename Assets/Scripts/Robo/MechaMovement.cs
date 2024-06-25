@@ -5,6 +5,9 @@ using UnityEngine.UI;
 public class MechaMovement : MonoBehaviour
 {
     [Header("Mecha Data")]
+    public SPT_Data spt;
+    public bool cpu;
+    public string Name;
     public int id;
     public Dictionary<int, GameObject> Thrusters = new Dictionary<int, GameObject>();
     public int HP;
@@ -15,6 +18,7 @@ public class MechaMovement : MonoBehaviour
     public int MaxEnergy;
     public Text HpText;
     public Text EnergyText;
+    public Text GeneratorText;
     public int boostCost = 0;
     public List<GameObject> otherPlayers;
     public GameObject[] Guns = new GameObject[10];
@@ -45,18 +49,28 @@ public class MechaMovement : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+        
         rb = GetComponent<Rigidbody>();
         cc = GetComponent<CapsuleCollider>();
         rb.freezeRotation = true;
-        //HP = MaxHP;
-        //Energy = MaxEnergy;
-        //HpText.text = "HP: " + HP.ToString();
-        //EnergyText.text = "EN: " + Energy.ToString();
+        if (GeneratorText == null)
+        {
+            GeneratorText = GetComponent<Text>();
+        }
+        if (HpText == null)
+        {
+            HpText = GetComponent<Text>();
+        }
     }
 
     private void Update()
     {
-        
+        if (!cpu)
+        {
+            HpText.text = HP.ToString();
+            GeneratorText.text = Generator.ToString();
+        }
+
     }
     private void FixedUpdate()
     {
@@ -74,17 +88,15 @@ public class MechaMovement : MonoBehaviour
             CalculateRotation(directionalInput);
 
         }
-
-     
+        // 移動処理
         Vector3 worldV = transform.TransformVector((moveSpeed + forceSpeed) * moveMultiplier);
         if (forceSpeed.y != 0)
         {
-            rb.velocity = new Vector3(worldV.x,rb.velocity.y,worldV.z);
+            rb.velocity = new Vector3(worldV.x, rb.velocity.y, worldV.z);
             rb.AddRelativeForce(forceSpeed * forceMulitplier, ForceMode.Impulse);
         }
         else
             rb.velocity = new Vector3(worldV.x, 0, worldV.z);
-
 
     }
     
@@ -105,10 +117,12 @@ public class MechaMovement : MonoBehaviour
        ;
       
     }
+    
     public void calculateDirection()
     {
         calculateDirection(directionalInput);
     }
+
     public void calculateDirection(Vector2 dInput)
     {
         if (target != null)

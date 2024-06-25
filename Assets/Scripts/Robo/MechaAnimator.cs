@@ -194,7 +194,7 @@ public class MechaAnimator : MonoBehaviour
     public float uTransition = 0;
     public float uTransitionSpeed = 0.1f;
     public RoboStructure structure;
-    public scriptInterpreter scriptRunner;
+    public scriptInterpret scriptRunner;
     public MechaMovement movement;
     public bool resetMovementPerScript = false;
 

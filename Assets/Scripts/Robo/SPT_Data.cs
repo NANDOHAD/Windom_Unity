@@ -1,7 +1,10 @@
+using System;
+using System.Text;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
+
 public struct SPT_BURNERSET
 {
     public int id;
@@ -16,15 +19,19 @@ public struct Weapon_Data
 }
 public class SPT_Data
 {
-    scriptInterpreter si;
+    scriptInterpret si;
     public List<SPT_BURNERSET> burnerList;
     public List<Weapon_Data> Guns;
     public List<Weapon_Data> Swords;
     public List<Weapon_Data> WeaponPoints;
     public MechaMovement mm;
+    public CypherTranscoder transcoder;
+    
+    
     public void buildInpterpreter()
     {
-        si = new scriptInterpreter();
+        si = new scriptInterpret();
+        si.registerVariable("Name", setName, getDummy);
         si.registerFunction("BURNERSET", readBurnerset);
         si.registerFunction("GUNFILENAME", gunFileName);
         si.registerFunction("SWORDFILENAME", swordFileName);
@@ -33,14 +40,19 @@ public class SPT_Data
         si.registerVariable("Generator", setGen, getDummy);
         si.registerVariable("Energy", setEn, getDummy);
     }
-   public void readSPT(string file)
+    public void readSPT(string file)
     {
+        SPT_Data result;
+        transcoder = new CypherTranscoder();
+        result = new SPT_Data();
         burnerList = new List<SPT_BURNERSET> ();
         Guns = new List<Weapon_Data> ();
         Swords = new List<Weapon_Data> ();
         WeaponPoints = new List<Weapon_Data> ();
-        string text = File.ReadAllText(file);
+        byte[] data = transcoder.Transcode(file);
+        string text = Encoding.GetEncoding("shift_jis").GetString(data);
         si.runScript(text);
+        Debug.Log(text);
     }
 
     public void readBurnerset(scriptVar[] values)
@@ -86,6 +98,11 @@ public class SPT_Data
             weapon.part = values[1].str;
             WeaponPoints.Add(weapon);
         }
+    }
+
+    public void setName(scriptVar value)
+    {
+        mm.Name = value.str;
     }
 
     public void setHP(scriptVar value)

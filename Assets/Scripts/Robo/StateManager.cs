@@ -83,10 +83,15 @@ public class StateManager : MonoBehaviour
 
     public void setMovementValues(bool UpdateRotation, bool UpdateDirection, bool ForceUpdateDirection = false)
     {
+
+        if (ForceUpdateDirection == true)
+        {
+            movement.calculateDirection(); 
+        }
         movement.UpdateRotation = UpdateRotation;
         movement.UpdateDirection = UpdateDirection;
-        if (ForceUpdateDirection)
-            movement.calculateDirection();
+    
+            
     }
     
     public void ChangeState(string name)
