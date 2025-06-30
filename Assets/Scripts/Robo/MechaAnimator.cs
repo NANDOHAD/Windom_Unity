@@ -253,16 +253,23 @@ public class MechaAnimator : MonoBehaviour
                         if (playTop && structure.isTop[i])
                         {
                             if (prevUpperOverride != null && uTransition < 1)
+                            {
+                                //Debug.Log($"partの名前: {go.name}");
                                 mt = InterpolateTransform(prevUpperOverride.getMT(i), UpperOverride.getMT(i), uTransition);
-                            else
+                            }else{
                                 mt = UpperOverride.getMT(i);
+                            }
                         }
                         else
                         {
                             if (prevRunner != null && transition < 1)
+                            {
+                                //Debug.Log($"partの名前: {go.name}");
                                 mt = InterpolateTransform(prevRunner.getMT(i), runner.getMT(i), transition);
-                            else
+
+                            }else{
                                 mt = runner.getMT(i);
+                            }
                         }
                         go.transform.localPosition = mt.position;
                         go.transform.localRotation = mt.rotation;
@@ -373,14 +380,33 @@ public class MechaAnimator : MonoBehaviour
     public static hod2v1_Part InterpolateTransform(hod2v1_Part a, hod2v1_Part b, float t)
     {
         hod2v1_Part iMT = new hod2v1_Part();
-        if (a.rotation.x + a.rotation.y + a.rotation.z + a.rotation.z == 0)
-            a.rotation = Quaternion.identity;
-        if (b.rotation.x + b.rotation.y + b.rotation.z + b.rotation.z == 0)
-            b.rotation = Quaternion.identity;
+        Quaternion rotA = a.rotation;
+        Quaternion rotB = b.rotation;
+        
+        // NaNやInfinityのチェック（回転）
+        if (float.IsNaN(rotA.x) || float.IsNaN(rotA.y) || float.IsNaN(rotA.z) || float.IsNaN(rotA.w) ||
+            float.IsInfinity(rotA.x) || float.IsInfinity(rotA.y) || float.IsInfinity(rotA.z) || float.IsInfinity(rotA.w) ||
+            (rotA.x == 0 && rotA.y == 0 && rotA.z == 0 && rotA.w == 0))
+            rotA = Quaternion.identity;
+
+        if (float.IsNaN(rotB.x) || float.IsNaN(rotB.y) || float.IsNaN(rotB.z) || float.IsNaN(rotB.w) ||
+            float.IsInfinity(rotB.x) || float.IsInfinity(rotB.y) || float.IsInfinity(rotB.z) || float.IsInfinity(rotB.w) ||
+            (rotB.x == 0 && rotB.y == 0 && rotB.z == 0 && rotB.w == 0))
+            rotB = Quaternion.identity;
+
+        // スケール値のNaNチェック
+        Vector3 scaleA = a.scale;
+        Vector3 scaleB = b.scale;
+        if (float.IsNaN(scaleA.x)) scaleA.x = 0;
+        if (float.IsNaN(scaleA.y)) scaleA.y = 0;
+        if (float.IsNaN(scaleA.z)) scaleA.z = 0;
+        if (float.IsNaN(scaleB.x)) scaleB.x = 0;
+        if (float.IsNaN(scaleB.y)) scaleB.y = 0;
+        if (float.IsNaN(scaleB.z)) scaleB.z = 0;
 
         iMT.position = Vector3.Lerp(a.position, b.position, t);
-        iMT.rotation = Quaternion.Lerp(a.rotation, b.rotation, t);
-        iMT.scale = Vector3.Lerp(a.scale, b.scale, t);
+        iMT.rotation = Quaternion.Lerp(rotA, rotB, t);
+        iMT.scale = Vector3.Lerp(scaleA, scaleB, t);
 
         return iMT;
     }

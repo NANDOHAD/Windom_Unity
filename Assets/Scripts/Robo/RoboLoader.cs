@@ -31,7 +31,7 @@ public class RoboLoader : MonoBehaviour
         if (File.Exists(Path.Combine(folder, "Script.ani")))
         {
             rs.ani.load(Path.Combine(folder, "Script.ani"));
-            rs.buildStructure();
+            rs.buildStructure(Path.Combine(folder, "Script.ani"));
             Debug.Log("Load ANI File");
         }
         else

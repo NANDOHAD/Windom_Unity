@@ -3,93 +3,67 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using UnityEngine;
-using System.Threading.Tasks;
 public class ani2
 {
-    public hod2v0 structure = null;
+    public hod2v0 structure;
     public List<windomAnimation> animations;
     public string _filename;
-
-    public async Task<bool> load(string filename, IProgress<int> progress = null) // IProgress<int>を追加
+    public bool load(string filename)
     {
         _filename = filename;
-        BinaryReader br = null;
-        try
+        BinaryReader br = new BinaryReader(File.Open(filename, FileMode.Open, FileAccess.Read));
+        
+        string signature = new string(br.ReadChars(3));
+        if (signature == "AN2")
         {
-            br = new BinaryReader(File.Open(filename, FileMode.Open, FileAccess.Read));
-            string signature = new string(br.ReadChars(3));
-            if (signature == "AN2")
+            animations = new List<windomAnimation>();
+            //Encoding ShiftJis = Encoding.GetEncoding(932);
+            string robohod = USEncoder.ToEncoding.ToUnicode(br.ReadBytes(256)).TrimEnd('\0');
+            structure = new hod2v0(robohod);
+            structure.loadFromBinary(ref br);
+            
+            int aCount = br.ReadInt32();
+            for (int i = 0; i < aCount; i++)
             {
-                animations = new List<windomAnimation>();
-                string robohod = USEncoder.ToEncoding.ToUnicode(br.ReadBytes(256)).TrimEnd('\0');
-                structure = new hod2v0(robohod);
-                structure.loadFromBinary(ref br);
-
-                int aCount = br.ReadInt32();
-                for (int i = 0; i < aCount; i++)
-                {
-                    try
-                    {
-                        windomAnimation aData = new windomAnimation();
-                        aData.loadFromAni(ref br, ref structure);
-                        animations.Add(aData);
-                        progress?.Report((i + 1) * 100 / aCount); // 進捗を報告
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.LogError($"Animation loading failed at index {i}: {ex.Message}");
-                    }
-                }
-                return true; // 成功した場合は true を返す
-            }
-            else if (signature == "ANI")
-            {
-                using (StreamWriter debug = new StreamWriter("debug.txt"))
-                {
-                    animations = new List<windomAnimation>();
-                    string robohod = USEncoder.ToEncoding.ToUnicode(br.ReadBytes(256)).TrimEnd('\0');
-                    hod1 oldStructure = new hod1(robohod);
-                    oldStructure.loadFromBinary(ref br);
-                    structure = oldStructure.convertToHod2v0();
-                    debug.WriteLine(br.BaseStream.Position.ToString());
-                }
-                for (int i = 0; i < 200; i++)
-                { 
-                    try
-                    {
-                        windomAnimation aData = new windomAnimation();
-                        aData.loadFromAniOld(ref br);
-                        animations.Add(aData);
-                        progress?.Report((i + 1) * 100 / 200); // 進捗を報告
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.LogError($"Old animation loading failed at index {i}: {ex.Message}");
-                    }
-                }
-                return true; // 成功した場合は true を返す
-            }
-            else if (signature == "HOD")
-            {
-                br.BaseStream.Seek(0, SeekOrigin.Begin);
-                animations = new List<windomAnimation>();
-                hod1 hodfile = new hod1("HOD1 FILE");
-                hodfile.loadFromBinary(ref br);
-                structure = hodfile.convertToHod2v0();
                 windomAnimation aData = new windomAnimation();
-                aData.frames = new List<hod2v1>();
-                aData.frames.Add(hodfile.convertToHod2v1());
-                aData.scripts = new List<script>();
+                aData.loadFromAni(ref br, ref structure);
                 animations.Add(aData);
-                return true; // 成功した場合は true を返す
             }
         }
-        finally
+        else if (signature == "ANI")
         {
-            if (br != null)
-                br.Dispose();
+            StreamWriter debug = new StreamWriter("debug.txt");
+            animations = new List<windomAnimation>();
+            //Encoding ShiftJis = Encoding.GetEncoding(932);
+            string robohod = USEncoder.ToEncoding.ToUnicode(br.ReadBytes(256)).TrimEnd('\0');
+            hod1 oldStructure = new hod1(robohod);
+            oldStructure.loadFromBinary(ref br);
+            structure = oldStructure.convertToHod2v0();
+            debug.WriteLine(br.BaseStream.Position.ToString());
+            debug.Close();
+            for (int i = 0; i < 200; i++)
+            { 
+                windomAnimation aData = new windomAnimation();
+                aData.loadFromAniOld(ref br);
+                animations.Add(aData);
+            }
         }
-        return false; // どの条件にも合致しない場合は false を返す
+        else if (signature == "HOD")
+        {
+            br.BaseStream.Seek(0, SeekOrigin.Begin);
+            animations = new List<windomAnimation>();
+            hod1 hodfile = new hod1("HOD1 FILE");
+            hodfile.loadFromBinary(ref br);
+            structure = hodfile.convertToHod2v0();
+            windomAnimation aData = new windomAnimation();
+            aData.frames = new List<hod2v1>();
+            aData.frames.Add(hodfile.convertToHod2v1());
+            aData.scripts = new List<script>();
+            animations.Add(aData);
+        }
+        br.Close();
+
+        return true;
     }
 
     public void save(string filename = "")
@@ -140,7 +114,7 @@ public class ani2
         }
         structure.parts.Insert(i, nPart);
         //Debug.Log(structure.parts.Count);
-        
+        //Debug.Log(partName);
         hod2v1_Part nPart1 = new hod2v1_Part();
         nPart1.name = partName;
         nPart1.treeDepth = level;
@@ -150,7 +124,6 @@ public class ani2
         nPart1.unk1 = new Quaternion();
         nPart1.unk2 = new Quaternion();
         nPart1.unk3 = new Quaternion();
-        
         for (int j = 0; j < animations.Count;j++)
         {
             for (int k = 0; k < animations[j].frames.Count; k++)

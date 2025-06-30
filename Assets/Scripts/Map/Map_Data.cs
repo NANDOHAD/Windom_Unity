@@ -6,6 +6,11 @@ using Assimp.Configs;
 using Assets;
 using System.Linq;
 using UnityDds;
+using System;
+using System.Collections;
+using System.Text.RegularExpressions;
+using UnityEngine.UI;
+using System.Threading.Tasks;
 
 public struct PieceData
 {
@@ -39,7 +44,7 @@ public class Map_Data : MonoBehaviour
 	public List<Vector3> point_8 = new List<Vector3>();
 	public List<Vector3> point_9 = new List<Vector3>();
 	public List<Vector3> point_rnd = new List<Vector3>();
-
+    public CypherTranscoder transcoder;
 	// Start is called before the first frame update
 	void Start()
     {
@@ -75,41 +80,41 @@ public class Map_Data : MonoBehaviour
 		for (int j = 0; j < Pieces.Length; j++)
 		{
 			updatePiece(j, map.Pieces[j].visualMesh, map.Pieces[j].collisionMesh, map.Pieces[j].scriptText);
-			//if (map.Pieces[j].visualMesh != "")
-			//{
+			if (map.Pieces[j].visualMesh != "")
+			{
 				
-			//	Mesh visualM = new Mesh();
-			//	Mesh colliderM = new Mesh();
-			//	Material[] mats = new Material[0];
-			//	bool isAlpha = false;
-			//	try
-			//	{
-			//		if (j == 199)
-			//			isAlpha = true;
+				Mesh visualM = new Mesh();
+				Mesh colliderM = new Mesh();
+				Material[] mats = new Material[0];
+				bool isAlpha = false;
+				try
+				{
+					if (j == 199)
+						isAlpha = true;
 
-			//		if (map.Pieces[j].visualMesh != "")
-			//			ImportModel(Path.Combine(path, map.Pieces[j].visualMesh), ref visualM, ref mats, isAlpha);
+					if (map.Pieces[j].visualMesh != "")
+						ImportModel(Path.Combine(path, map.Pieces[j].visualMesh), ref visualM, ref mats, isAlpha);
 
-			//		if (map.Pieces[j].visualMesh == map.Pieces[j].collisionMesh)
-			//		{ colliderM = visualM; Debug.Log("Equals Visual"); }
-			//		if (map.Pieces[j].collisionMesh != "")
-			//		{ colliderM = ImportModel(Path.Combine(path, map.Pieces[j].collisionMesh)); Debug.Log("New Mesh Loaded"); }
-			//	}
-   //             catch
-   //             {
-			//		Debug.Log("Invalid Load: " + map.Pieces[j].visualMesh);
-   //             }
-			//	visualM.name = map.Pieces[j].visualMesh;
-			//	if (colliderM != null)
-			//		colliderM.name = map.Pieces[j].collisionMesh;
+					if (map.Pieces[j].visualMesh == map.Pieces[j].collisionMesh)
+					{ colliderM = visualM; Debug.Log("Equals Visual"); }
+					if (map.Pieces[j].collisionMesh != "")
+					{ colliderM = ImportModel(Path.Combine(path, map.Pieces[j].collisionMesh)); Debug.Log("New Mesh Loaded"); }
+				}
+				catch
+				{
+					Debug.Log("Invalid Load: " + map.Pieces[j].visualMesh);
+				}
+				visualM.name = map.Pieces[j].visualMesh;
+				if (colliderM != null)
+					colliderM.name = map.Pieces[j].collisionMesh;
 
-			//	Pieces[j].visualMesh = visualM;
-			//	Pieces[j].colliderMesh = colliderM;
-			//	Pieces[j].materials = mats;
-			//	Pieces[j].script = map.Pieces[j].scriptText;
+				Pieces[j].visualMesh = visualM;
+				Pieces[j].colliderMesh = colliderM;
+				Pieces[j].materials = mats;
+				Pieces[j].script = map.Pieces[j].scriptText;
 
 				
-			//}
+			}
 		}
 
 		ObjectData od;
@@ -284,7 +289,217 @@ public class Map_Data : MonoBehaviour
     //	}
     //}
 
-    void ImportModel(GameObject GO, string file, bool isAlpha = false)
+    void ImportModel(string file, ref Mesh mesh, ref Material[] materials, bool isAlpha = false)	
+    {
+        try
+        {
+            string Modelpath = Path.GetDirectoryName(file);
+            byte[] data = transcoder.Transcode(file);
+            if (data == null)
+            {
+                Debug.Log($"ファイルの変換に失敗しました: {file}。結果がnullです。");
+                return;
+            }
+            if (data.Length == 0)
+            {
+                Debug.Log($"ファイル {file} の変換データが空です。");
+                return;
+            }
+            if (data.Length > 0)
+            {
+                string data1 = System.Text.Encoding.GetEncoding("utf-8").GetString(data);
+                data1 = XfileStringConverter(data1);
+                byte[] data3 = System.Text.Encoding.GetEncoding("utf-8").GetBytes(data1);
+                MemoryStream ms = new MemoryStream(data3);
+                Assimp.Scene scen = null;
+                try
+                {
+                    scen = Importer.ImportFileFromStream(ms, Helper.PostProcessStepflags, "x");
+                }
+                catch (System.Exception e)
+                {
+                    Debug.Log($"暗号化されたモデル {file} のインポート中にエラーが発生しました: {e.Message}。Assimpがファイルを読み込めませんでした。");
+                }
+                if (scen == null)
+                {
+                    Debug.LogWarning($"ストリームからの暗号化されたモデルのインポートに失敗しました: {file}。Assimpがファイルを読み込めませんでした。");
+                    return;
+                }
+
+
+
+                //
+                mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+                
+                try
+                {
+                    mesh.CombineMeshes(scen.Meshes.Select(x => {
+                        var transform = scen.RootNode.Transform;
+                        // 変換行列から負の値をチェックし、必要に応じて調整
+                        if (transform.A1 < 0 || transform.A2 < 0 || transform.A3 < 0 ||
+                            transform.B1 < 0 || transform.B2 < 0 || transform.B3 < 0 ||
+                            transform.C1 < 0 || transform.C2 < 0 || transform.C3 < 0)
+                        {
+                            // 負の値が含まれている場合は単位行列を使用
+                            transform = Assimp.Matrix4x4.Identity;
+                        }
+
+                        return new CombineInstance()
+                        {
+                            mesh = x.ToUnityMesh(),
+                            transform = transform.ToUnityMatrix()
+                        };
+                    }).ToArray(), false);
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogWarning($"ファイル {file} のメッシュ結合に失敗しました: {e.Message}");
+                    return;
+                }
+                
+                Material[] materials = new Material[scen.Meshes.Length];
+
+                for (int index = 0; index < materials.Length; index++)
+                {
+                    var mat = new Material(Shader.Find("Standard"));
+                    if (mat == null)
+                    {
+                        Debug.LogWarning($"マテリアルのシェーダーが見つかりません: {file}");
+                        return;
+                    }
+
+                    if (scen.Meshes[index].MaterialIndex < scen.Materials.Length)
+                    {
+                        if (scen.Materials[scen.Meshes[index].MaterialIndex] != null)
+                        {
+							if (isAlpha)
+								mat.CopyPropertiesFromMaterial(baseMat);
+                            mat.name = scen.Materials[scen.Meshes[index].MaterialIndex].Name;
+                            var textures = scen.Materials[scen.Meshes[index].MaterialIndex].GetAllTextures();
+                            var color = scen.Materials[scen.Meshes[index].MaterialIndex].ColorDiffuse;
+                            mat.color = new Color(color.R, color.G, color.B, color.A);
+                            mat.SetFloat("_Glossiness", scen.Materials[scen.Meshes[index].MaterialIndex].ShininessStrength);
+
+                            // シェーダーが設定されていない場合、デフォルトのシェーダーを割り当てる
+                            if (string.IsNullOrEmpty(mat.shader.name) || mat.shader == null)
+                            {
+                                Debug.LogWarning($"マテリアル {mat.name} のシェーダーが設定されていません。デフォルトのシェーダーを割り当てます。");
+                                mat.shader = Shader.Find("Standard"); // デフォルトのシェーダーを設定
+                            }
+
+                            if (textures.Length > 0 && File.Exists(Path.Combine(Modelpath, textures[0].FilePath)))
+                            {
+                                try
+                                {
+                                    mat.mainTexture = Helper.LoadTextureEncrypted(Path.Combine(Modelpath, textures[0].FilePath), ref transcoder);
+                                }
+                                catch (System.Exception e)
+                                {
+                                    Debug.LogWarning($"ファイル {file} のテクスチャ読み込みに失敗しました: {e.Message}");
+                                }
+                            }
+                            else
+                            {
+                                Debug.LogWarning($"マテリアルインデックス {scen.Meshes[index].MaterialIndex} のテクスチャが見つかりません");
+                            }
+                        }
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"メッシュ {index} の無効なマテリアルインデックス: {scen.Meshes[index].MaterialIndex}");
+                    }
+
+                    materials[index] = mat;
+                }
+                GO.AddComponent<MeshFilter>().mesh = mesh;
+                //part.AddComponent<MeshCollider>().sharedMesh = mesh; 
+                GO.AddComponent<MeshRenderer>().materials = materials;
+            }
+            else
+            {
+                Debug.LogWarning($"ファイル {file} の復号化に失敗しました。Assimpがファイルを読み込めませんでした。");
+                return;
+            }
+        }
+        catch (System.Exception e)
+        {
+            //Debug.Log($"暗号化されたモデル {file} の処理中にエラーが発生しました: {e.Message}。Assimpがファイルを読み込めませんでした。");
+        }
+    }
+
+    void ImportModel3(GameObject GO, string file, bool isAlpha = false)
+    {
+        if (File.Exists(file))
+        {
+            try
+            {
+                string Modelpath = Path.GetDirectoryName(file);
+                var scen = Importer.ImportFile(file, Helper.PostProcessStepflags);
+                if (scen == null)
+                {
+                    Debug.LogWarning($"モデルのインポートに失敗しました: {file}。Assimpがファイルを読み込めませんでした。");
+                    return;
+                }
+
+                Mesh mesh = new Mesh();
+                mesh.CombineMeshes(scen.Meshes.Select(x => new CombineInstance()
+                {
+                    mesh = x.ToUnityMesh(),
+                    transform = scen.RootNode.Transform.ToUnityMatrix()
+                }).ToArray(), false);
+
+                Material[] materials = new Material[scen.Meshes.Length];
+
+                for (int index = 0; index < materials.Length; index++)
+                {
+                    var mat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+
+                    if (scen.Meshes[index].MaterialIndex < scen.Materials.Length)
+                    {
+                        if (scen.Materials[scen.Meshes[index].MaterialIndex] != null)
+                        {
+							if (isAlpha)
+								mat.CopyPropertiesFromMaterial(baseMat);
+                            mat.name = scen.Materials[scen.Meshes[index].MaterialIndex].Name;
+                            var textures = scen.Materials[scen.Meshes[index].MaterialIndex].GetAllTextures();
+                            var color = scen.Materials[scen.Meshes[index].MaterialIndex].ColorDiffuse;
+                            mat.color = new Color(color.R, color.G, color.B, color.A);
+                            mat.SetFloat("_Glossiness", scen.Materials[scen.Meshes[index].MaterialIndex].ShininessStrength);
+
+
+                            if (textures.Length > 0 && File.Exists(Path.Combine(Modelpath, textures[0].FilePath)))
+                            {
+                                try
+                                {
+                                    mat.mainTexture = Helper.LoadTexture(Path.Combine(Modelpath, textures[0].FilePath));
+                                }
+                                catch
+                                {
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"メッシュ {index} の無効なマテリアルインデックス: {scen.Meshes[index].MaterialIndex}");
+                    }
+
+                    materials[index] = mat;
+                }
+
+                GO.AddComponent<MeshFilter>().mesh = mesh;
+                //part.AddComponent<MeshCollider>().sharedMesh = mesh; 
+                GO.AddComponent<MeshRenderer>().materials = materials;
+            }
+            catch (Exception e)
+            {
+                Debug.Log($"モデル {file} のインポート中にエラーが発生しました: {e.Message}。Assimpがファイルを読み込めませんでした。");
+            }
+        }
+    }
+
+
+    void ImportModel2(GameObject GO, string file, bool isAlpha = false)
 	{
 		if (File.Exists(file))
 		{
@@ -346,7 +561,7 @@ public class Map_Data : MonoBehaviour
 		}
 	}
 
-	void ImportModel(string file, ref Mesh mesh, ref Material[] materials, bool isAlpha = false)
+	void ImportModel3(string file, ref Mesh mesh, ref Material[] materials, bool isAlpha = false)
 	{
 		
 		if (File.Exists(file))
@@ -404,7 +619,9 @@ public class Map_Data : MonoBehaviour
 			}
 		}
 		else
-			Debug.Log("File Doesn't Exist");
+		{
+			//Debug.Log("File Doesn't Exist");
+		}
 	}
 
 	Mesh ImportModel(string file)
@@ -432,6 +649,60 @@ public class Map_Data : MonoBehaviour
 		}
 		return null;
 	}
+    public string XfileStringConverter(string data)
+    {
+        if (!data.Trim().EndsWith("}"))
+        {
+            Debug.Log("文字化けを確認しました");
+            int lastBraceIndex = data.LastIndexOf('}');
+            if (lastBraceIndex != -1)
+            {
+                data = data.Substring(0, lastBraceIndex + 1); // 最後の波括弧を残す
+            }
+            data += "}"; // 新たに波括弧
+            Debug.Log("文字化けを対応しました。");
+        }
+        // FrameTransformMatrixの部分を探す正規表現        
+        string pattern = @"FrameTransformMatrix\s*{([^}]*)}";
+        MatchCollection matches = Regex.Matches(data, pattern, RegexOptions.Singleline);
+
+        if (matches.Count >= 2) // 2回目のマッチが存在するか確認
+        {
+            
+            string matrixContent = matches[1].Groups[1].Value;
+            Debug.Log("マッチしました:" + matrixContent);
+            // 4行目の数値を処理
+            string[] lines = matrixContent.Split(new[] {','}, StringSplitOptions.RemoveEmptyEntries);
+            Debug.Log("要素数は" + lines.Length);
+            if (lines.Length >= 16) // 4行目の数値があるか確認
+            {
+                Debug.Log("4行目を確認しました。");
+                for (int i = 13; i < 16; i++) // 4行目の数値（3つ）を処理
+                {
+                    lines[i] = lines[i].TrimStart('-'); // マイナス符号を取り除く
+                    Debug.Log("符号排除処理をしました");
+                }
+
+                // 新しい内容を生成
+                string newMatrixContent = string.Join(",", lines);
+                string output = data.Replace(matrixContent, newMatrixContent);
+                Debug.Log($"書き換えました: {output.Substring(output.Length - 10)}");
+                return output;
+            }
+            else
+            {
+                Debug.Log("4行目の数値が見つかりませんでした。");
+            }
+        }
+        else
+        {
+            Debug.Log("FrameTransformMatrixが見つかりませんでした。");
+        }
+
+
+
+        return data;
+    }
 
 	//Texture2D LoadDDS(string file)
  //   {

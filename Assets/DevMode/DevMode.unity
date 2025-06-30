@@ -1386,7 +1386,6 @@ MonoBehaviour:
   m_Cameras: []
   m_RendererIndex: -1
   m_VolumeLayerMask:
-    serializedVersion: 2
     m_Bits: 1
   m_VolumeTrigger: {fileID: 0}
   m_VolumeFrameworkUpdateModeOption: 2
@@ -4517,7 +4516,7 @@ MonoBehaviour:
   ma: {fileID: 744043727}
   mm: {fileID: 744043726}
   sm: {fileID: 744043725}
-  rp: {fileID: 0}
+  rp: {fileID: 744043731}
 --- !u!114 &744043725
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4752,7 +4751,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   mm: {fileID: 744043726}
-  BeamSwordTemplate: {fileID: 0}
+  BeamSwordTemplate: {fileID: 212148834}
 --- !u!1 &755002604
 GameObject:
   m_ObjectHideFlags: 0
@@ -5887,7 +5886,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: -17.488}
+  m_AnchoredPosition: {x: 0, y: -17.487976}
   m_SizeDelta: {x: 0, y: -34.975}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &898154827
@@ -9908,7 +9907,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: -17.486}
+  m_AnchoredPosition: {x: 0, y: -17.486023}
   m_SizeDelta: {x: 0, y: -34.972}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1522657350

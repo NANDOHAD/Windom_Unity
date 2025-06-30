@@ -2,25 +2,34 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System.Text.RegularExpressions;
 using System.IO;
 using Assets;
 using System.Linq;
+using UnityEngine.UI;
+using System.Threading.Tasks;
 public delegate void Update_Event();
 public class RoboStructure : MonoBehaviour
 {
     public GameObject root;
+    //public bool cpu = false;
+    //public UI_InputBox inputBox;
+    //public Text statusMessege;
     public List<GameObject> parts = new List<GameObject>();
     public List<bool> isTop = new List<bool>();
     public hod2v0 hod;
     public ani2 ani;
+    //public ani2 anicpu;
     public Assimp.AssimpImporter Importer = new Assimp.AssimpImporter();
     public string folder;
     public string filename;
+    //public List<Update_Event> updates = new List<Update_Event>();
     public CypherTranscoder transcoder;
+    
     // Start is called before the first frame update
     void Start()
     {
-        
+        //transcoder = new CypherTranscoder();
     }
 
     // Update is called once per frame
@@ -31,88 +40,188 @@ public class RoboStructure : MonoBehaviour
 
     public void buildStructure(string filename)
     {
-        ani.load(filename);
-        buildStructure(ani.structure);
+        try
+        {
+            Debug.Log($"[RoboStructure] buildStructure: アニメーションファイルを読み込み中: {filename}");
+            ani.load(filename);
+            if (ani.structure == null)
+                {
+                    Debug.Log("[RoboStructure] buildStructure: ファイル読み込み後にani.structureがnullです。構造体を構築できません。");
+                    return;
+                }
+            Debug.Log($"[RoboStructure] buildStructure: プレイヤー用アニメーションファイルの読み込みに成功しました。構造体を構築中...");
+            buildStructure(ani.structure);
+        }
+        catch (System.Exception e)
+        {
+            Debug.Log($"[RoboStructure] buildStructure: ファイル {filename} の読み込み中にエラーが発生しました: {e.Message}");
+        }
     }
-    public void buildStructure()
+    public async void buildStructure()
     {
-        ani = new ani2();
-        ani.load(Path.Combine(folder, "Script.ani"));
-        buildStructure(ani.structure);
+        try
+        {
+            Debug.Log($"[RoboStructure] buildStructure: フォルダ {folder} からデフォルトのアニメーションファイルを読み込み中");
+            
+            ani = new ani2();
+            string scriptPath = Path.Combine(folder, "Script.ani");
+            
+            if (!File.Exists(scriptPath))
+            {
+                Debug.Log($"[RoboStructure] buildStructure: Script.aniファイルが見つかりません: {scriptPath}");
+                return;
+            }
+            
+            // 非同期処理の完了を待つ
+            bool loadSuccess = await ani.load(scriptPath);
+            
+            if (!loadSuccess)
+            {
+                Debug.Log("[RoboStructure] buildStructure: Script.aniファイルの読み込みに失敗しました。");
+                return;
+            }
+            
+            if (ani.structure == null)
+            {
+                Debug.Log("[RoboStructure] buildStructure: Script.ani読み込み後にani.structureがnullです。構造体を構築できません。");
+                return;
+            }
+            
+            Debug.Log($"[RoboStructure] buildStructure: Script.aniの読み込みに成功しました。構造体を構築中...");
+            buildStructure(ani.structure);
+        }
+        catch (System.Exception e)
+        {
+            Debug.Log($"[RoboStructure] buildStructure: フォルダ {folder} からScript.aniを読み込み中にエラーが発生しました: {e.Message}");
+        }
     }
+
 
     public void buildStructure(hod2v0 Robo)
     {
-        isTop.Clear();
-        //find cypher
-        string[] files = Directory.GetFiles(folder);
-        foreach (string file in files)
+        // nullチェックとデバッグログ
+        if (Robo == null)
         {
-            if (transcoder.findCypher(file))
-                break;
+            Debug.Log("[RoboStructure] buildStructure: Roboパラメータがnullです。構造体の構築をスキップします。");
+            return;
+        }
+
+        if (Robo.parts == null)
+        {
+            Debug.Log("[RoboStructure] buildStructure: Robo.partsがnullです。構造体の構築をスキップします。");
+            return;
+        }
+
+        Debug.Log($"[RoboStructure] buildStructure: {Robo.parts.Count}個のパーツで構築を開始します");
+
+        //find cypher
+        if (transcoder == null)
+        {
+            Debug.LogWarning("[RoboStructure] buildStructure: transcoderがnullです。暗号化検索をスキップします。");
+        }
+        else
+        {
+            string[] files = Directory.GetFiles(folder);
+            foreach (string file in files)
+            {
+                if (transcoder.findCypher(file))
+                    break;
+            }
         }
 
         hod = Robo;
-        
+        if (root != null)
+            GameObject.Destroy(root);
 
         //build Ani
 
         parts.Clear();
 
-        if (root != null)
-            GameObject.Destroy(root);
-
         for (int i = 0; i < Robo.parts.Count; i++)
         {
-
-            GameObject part = new GameObject(Robo.parts[i].name);
-            if (i == 0)
+            try
             {
-                root = part;
-                part.transform.parent = transform;
-            }
-            parts.Add(part);
-            
-            if (i == 0)
-            {
-                parts[i].transform.localPosition = Robo.parts[i].position;
-                parts[i].transform.localRotation = Robo.parts[i].rotation;
-                parts[i].transform.localScale = Robo.parts[i].scale;
-                isTop.Add(false);
-            }
-            else
-            {
-                //find next level higher in tree.
-                for (int j = i - 1; j >= 0; j--)
+                // 構造体の有効性チェック（名前が空でないかチェック）
+                if (string.IsNullOrEmpty(Robo.parts[i].name))
                 {
-                    if (Robo.parts[i].treeDepth - 1 == Robo.parts[j].treeDepth)
+                    Debug.LogWarning($"[RoboStructure] buildStructure: インデックス {i} のパーツの名前が空です。このパーツをスキップします。");
+                    continue;
+                }
+
+                int depth = Robo.parts[i].treeDepth;
+                string offset = "";
+                for (int j = 0; j < depth; j++)
+                    offset += "   ";
+
+                var part = new GameObject(Robo.parts[i].name);
+                if (Robo.parts[i].treeDepth == 0)
+                {
+                    // ROOTのGameObject作成時のエラーハンドリング
+                    try
                     {
-                        if (j == 0)
+                        root = part;
+                        if (root == null)
                         {
-                            parts[i].transform.SetParent(parts[0].transform);
-                            parts[i].transform.localPosition = Robo.parts[i].position;
-                            parts[i].transform.localRotation = Robo.parts[i].rotation;
-                            parts[i].transform.localScale = Robo.parts[i].scale;
+                            Debug.LogError($"[RoboStructure] buildStructure: ROOTのGameObject作成に失敗しました。パーツ名: {Robo.parts[i].name}");
+                            continue;
                         }
-                        else
+                        
+                        root.transform.SetParent(this.transform);
+                        if (root.transform.parent != this.transform)
                         {
-                            parts[i].transform.SetParent(parts[j].transform);
-                            parts[i].transform.localPosition = Robo.parts[i].position;
-                            parts[i].transform.localRotation = Robo.parts[i].rotation;
-                            parts[i].transform.localScale = Robo.parts[i].scale;
-                            
+                            Debug.LogError($"[RoboStructure] buildStructure: ROOTの親設定に失敗しました。パーツ名: {Robo.parts[i].name}");
+                            continue;
                         }
-
-                        if (parts[i].name == "Body.x" || isTop[j])
-                            isTop.Add(true);
-                        else
-                            isTop.Add(false);
-
-                        break;
+                        
+                        Debug.Log($"[RoboStructure] buildStructure: ROOTのGameObject作成に成功しました: {Robo.parts[i].name}");
+                    }
+                    catch (System.Exception e)
+                    {
+                        Debug.LogError($"[RoboStructure] buildStructure: ROOTのGameObject作成中にエラーが発生しました: {e.Message}");
+                        continue;
+                    }
+                }
+                parts.Add(part);
+                if (i == 0)
+                {
+                    parts[i].transform.localPosition = Robo.parts[i].position;
+                    parts[i].transform.localRotation = Robo.parts[i].rotation;
+                    parts[i].transform.localScale = Robo.parts[i].scale;
+                }
+                else
+                {
+                    //find next level higher in tree.
+                    for (int j = i - 1; j >= 0; j--)
+                    {
+                        if (Robo.parts[i].treeDepth - 1 == Robo.parts[j].treeDepth)
+                        {
+                            if (j == 0)
+                            {
+                                parts[i].transform.SetParent(parts[0].transform);
+                                parts[i].transform.localPosition = Robo.parts[i].position;
+                                parts[i].transform.localRotation = Robo.parts[i].rotation;
+                                parts[i].transform.localScale = Robo.parts[i].scale;
+                            }
+                            else
+                            {
+                                parts[i].transform.SetParent(parts[j].transform);
+                                parts[i].transform.localPosition = Robo.parts[i].position;
+                                parts[i].transform.localRotation = Robo.parts[i].rotation;
+                                parts[i].transform.localScale = Robo.parts[i].scale;
+                            }
+                            break;
+                        }
                     }
                 }
             }
+            catch (System.Exception e)
+            {
+                Debug.Log($"[RoboStructure] buildStructure: パーツ {i} の処理中にエラーが発生しました: {e.Message}。次のパーツに続行します。");
+                continue;
+            }
         }
+
+        //Debug.Log($"[RoboStructure] buildStructure: {parts.Count}個のパーツの作成に成功しました。モデルのインポートを開始します...");
 
         for (int i = 0; i < Robo.parts.Count; i++)
         {
@@ -121,39 +230,14 @@ public class RoboStructure : MonoBehaviour
                 if (i != 0)
                     ImportModelEncrypted(parts[i], Path.Combine(folder, Robo.parts[i].name));
 
-                if (Robo.parts[i].name == "Body_d.x")
-                {
-                    MeshCollider mc = parts[i].AddComponent<MeshCollider>();
-                    mc.sharedMesh = ImportModel(Path.Combine(folder, "Hit.x"));
-                    mc.convex = true;
-                    parts[i].layer = 7;
-                    Rigidbody rb = parts[i].GetComponent<Rigidbody>();
-                    if (rb == null)
-                    {
-                        rb = parts[i].AddComponent<Rigidbody>();
-
-                    }
-                    rb.isKinematic = true; // Rigidbodyが存在する場合、キネマティックに設定
-
-                }
-
-                if (Robo.parts[i].name == "Body.x")
-                {
-                    MeshCollider mc = parts[i].AddComponent<MeshCollider>();
-                    mc.sharedMesh = ImportModel(Path.Combine(folder, "HitUp.x"));
-                    mc.convex = true;
-                    parts[i].layer = 7;
-
-                    Rigidbody rb = parts[i].GetComponent<Rigidbody>();
-                    if (rb == null)
-                    {
-                        rb = parts[i].AddComponent<Rigidbody>();
-                    }
-                    rb.isKinematic = true; // Rigidbodyが存在する場合、キネマティックに設定
-                }
             }
-            catch { }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"[RoboStructure] buildStructure: パーツ {i} のモデルインポート中にエラーが発生しました: {e.Message}。次のパーツに続行します。");
+            }
         }
+
+        Debug.Log($"[RoboStructure] buildStructure: 構造体の構築が正常に完了しました。");
     }
 
     void ImportModel(GameObject GO, string file)
@@ -163,9 +247,13 @@ public class RoboStructure : MonoBehaviour
             try
             {
                 string Modelpath = Path.GetDirectoryName(file);
-
                 var scen = Importer.ImportFile(file, Helper.PostProcessStepflags);
-                
+                if (scen == null)
+                {
+                    Debug.LogWarning($"モデルのインポートに失敗しました: {file}。Assimpがファイルを読み込めませんでした。");
+                    return;
+                }
+
                 Mesh mesh = new Mesh();
                 mesh.CombineMeshes(scen.Meshes.Select(x => new CombineInstance()
                 {
@@ -179,25 +267,32 @@ public class RoboStructure : MonoBehaviour
                 {
                     var mat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
 
-                    if (scen.Materials[scen.Meshes[index].MaterialIndex] != null)
+                    if (scen.Meshes[index].MaterialIndex < scen.Materials.Length)
                     {
-                        mat.name = scen.Materials[scen.Meshes[index].MaterialIndex].Name;
-                        var textures = scen.Materials[scen.Meshes[index].MaterialIndex].GetAllTextures();
-                        var color = scen.Materials[scen.Meshes[index].MaterialIndex].ColorDiffuse;
-                        mat.color = new Color(color.R, color.G, color.B, color.A);
-                        mat.SetFloat("_Glossiness", scen.Materials[scen.Meshes[index].MaterialIndex].ShininessStrength);
-
-
-                        if (textures.Length > 0 && File.Exists(Path.Combine(Modelpath, textures[0].FilePath)))
+                        if (scen.Materials[scen.Meshes[index].MaterialIndex] != null)
                         {
-                            try
+                            mat.name = scen.Materials[scen.Meshes[index].MaterialIndex].Name;
+                            var textures = scen.Materials[scen.Meshes[index].MaterialIndex].GetAllTextures();
+                            var color = scen.Materials[scen.Meshes[index].MaterialIndex].ColorDiffuse;
+                            mat.color = new Color(color.R, color.G, color.B, color.A);
+                            mat.SetFloat("_Glossiness", scen.Materials[scen.Meshes[index].MaterialIndex].ShininessStrength);
+
+
+                            if (textures.Length > 0 && File.Exists(Path.Combine(Modelpath, textures[0].FilePath)))
                             {
-                                mat.mainTexture = Helper.LoadTexture(Path.Combine(Modelpath, textures[0].FilePath));
-                            }
-                            catch
-                            {
+                                try
+                                {
+                                    mat.mainTexture = Helper.LoadTexture(Path.Combine(Modelpath, textures[0].FilePath));
+                                }
+                                catch
+                                {
+                                }
                             }
                         }
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"メッシュ {index} の無効なマテリアルインデックス: {scen.Meshes[index].MaterialIndex}");
                     }
 
                     materials[index] = mat;
@@ -207,169 +302,227 @@ public class RoboStructure : MonoBehaviour
                 //part.AddComponent<MeshCollider>().sharedMesh = mesh; 
                 GO.AddComponent<MeshRenderer>().materials = materials;
             }
-            catch
+            catch (Exception e)
             {
+                Debug.Log($"モデル {file} のインポート中にエラーが発生しました: {e.Message}。Assimpがファイルを読み込めませんでした。");
             }
         }
     }
 
     void ImportModelEncrypted(GameObject GO, string file)
     {
-        if (File.Exists(file))
+        try
         {
-            try
+            string Modelpath = Path.GetDirectoryName(file);
+            byte[] data = transcoder.Transcode(file);
+            if (data == null)
             {
-                string Modelpath = Path.GetDirectoryName(file);
-                byte[] data = transcoder.Transcode(file);
-                MemoryStream ms = new MemoryStream(data);
-                var scen = Importer.ImportFileFromStream(ms, Helper.PostProcessStepflags, "x");
+                Debug.Log($"ファイルの変換に失敗しました: {file}。結果がnullです。");
+                return;
+            }
+            if (data.Length == 0)
+            {
+                Debug.Log($"ファイル {file} の変換データが空です。");
+                return;
+            }
+            if (data.Length > 0)
+            {
+                string data1 = System.Text.Encoding.GetEncoding("utf-8").GetString(data);
+                data1 = XfileStringConverter(data1);
+                byte[] data3 = System.Text.Encoding.GetEncoding("utf-8").GetBytes(data1);
+                MemoryStream ms = new MemoryStream(data3);
+                Assimp.Scene scen = null;
+                try
+                {
+                    scen = Importer.ImportFileFromStream(ms, Helper.PostProcessStepflags, "x");
+                }
+                catch (System.Exception e)
+                {
+                    //Debug.Log($"暗号化されたモデル {file} のインポート中にエラーが発生しました: {e.Message}。Assimpがファイルを読み込めませんでした。");
+                }
+                if (scen == null)
+                {
+                    //Debug.LogWarning($"ストリームからの暗号化されたモデルのインポートに失敗しました: {file}。Assimpがファイルを読み込めませんでした。");
+                    return;
+                }
+
+
 
                 Mesh mesh = new Mesh();
                 mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
-                // 頂点データの検証と修正
-                var combineInstances = scen.Meshes.Select(x => new CombineInstance()
+                
+                try
                 {
-                    mesh = ValidateAndCorrectMesh(x.ToUnityMesh()),
-                    transform = scen.RootNode.Transform.ToUnityMatrix()
-                }).ToArray();
+                    mesh.CombineMeshes(scen.Meshes.Select(x => {
+                        var transform = scen.RootNode.Transform;
+                        // 変換行列から負の値をチェックし、必要に応じて調整
+                        if (transform.A1 < 0 || transform.A2 < 0 || transform.A3 < 0 ||
+                            transform.B1 < 0 || transform.B2 < 0 || transform.B3 < 0 ||
+                            transform.C1 < 0 || transform.C2 < 0 || transform.C3 < 0)
+                        {
+                            // 負の値が含まれている場合は単位行列を使用
+                            transform = Assimp.Matrix4x4.Identity;
+                        }
 
-                mesh.CombineMeshes(combineInstances, false);
-
-                if (mesh.vertexCount == 0) // メッシュが空の場合
-                {
-                    Debug.Log("空のメッシュが検出されました。エラーを無視します。");
-                        return; // ここで処理を終了し、エラーを無視
+                        return new CombineInstance()
+                        {
+                            mesh = x.ToUnityMesh(),
+                            transform = transform.ToUnityMatrix()
+                        };
+                    }).ToArray(), false);
                 }
+                catch (System.Exception e)
+                {
+                    Debug.Log($"ファイル {file} のメッシュ結合に失敗しました: {e.Message}");
+                    return;
+                }
+                
                 Material[] materials = new Material[scen.Meshes.Length];
 
                 for (int index = 0; index < materials.Length; index++)
                 {
-                    var mat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-
-                    if (scen.Materials[scen.Meshes[index].MaterialIndex] != null)
+                    var mat = new Material(Shader.Find("Standard"));
+                    if (mat == null)
                     {
-                        mat.name = scen.Materials[scen.Meshes[index].MaterialIndex].Name;
-                        var textures = scen.Materials[scen.Meshes[index].MaterialIndex].GetAllTextures();
-                        var color = scen.Materials[scen.Meshes[index].MaterialIndex].ColorDiffuse;
-                        mat.color = new Color(color.R, color.G, color.B, color.A);
-                        mat.SetFloat("_Glossiness", scen.Materials[scen.Meshes[index].MaterialIndex].ShininessStrength);
+                        Debug.Log($"マテリアルのシェーダーが見つかりません: {file}");
+                        return;
+                    }
 
-                        if (textures.Length > 0 && File.Exists(Path.Combine(Modelpath, textures[0].FilePath)))
+                    if (scen.Meshes[index].MaterialIndex < scen.Materials.Length)
+                    {
+                        if (scen.Materials[scen.Meshes[index].MaterialIndex] != null)
                         {
-                            try
+                            mat.name = scen.Materials[scen.Meshes[index].MaterialIndex].Name;
+                            var textures = scen.Materials[scen.Meshes[index].MaterialIndex].GetAllTextures();
+                            var color = scen.Materials[scen.Meshes[index].MaterialIndex].ColorDiffuse;
+                            mat.color = new Color(color.R, color.G, color.B, color.A);
+                            mat.SetFloat("_Glossiness", scen.Materials[scen.Meshes[index].MaterialIndex].ShininessStrength);
+
+                            // シェーダーが設定されていない場合、デフォルトのシェーダーを割り当てる
+                            if (string.IsNullOrEmpty(mat.shader.name) || mat.shader == null)
                             {
-                                mat.mainTexture = Helper.LoadTextureEncrypted(Path.Combine(Modelpath, textures[0].FilePath), ref transcoder);
+                                Debug.LogWarning($"マテリアル {mat.name} のシェーダーが設定されていません。デフォルトのシェーダーを割り当てます。");
+                                mat.shader = Shader.Find("Standard"); // デフォルトのシェーダーを設定
                             }
-                            catch
+
+                            if (textures.Length > 0 && File.Exists(Path.Combine(Modelpath, textures[0].FilePath)))
                             {
-                                Debug.LogError("テクスチャの読み込みに失敗しました: " + Path.Combine(Modelpath, textures[0].FilePath));
+                                try
+                                {
+                                    mat.mainTexture = Helper.LoadTextureEncrypted(Path.Combine(Modelpath, textures[0].FilePath), ref transcoder);
+                                }
+                                catch (System.Exception e)
+                                {
+                                    Debug.LogWarning($"ファイル {file} のテクスチャ読み込みに失敗しました: {e.Message}");
+                                }
+                            }
+                            else
+                            {
+                                //Debug.Log($"マテリアルインデックス {scen.Meshes[index].MaterialIndex} にはテクスチャが設定されていません: {file}");
                             }
                         }
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"メッシュ {index} の無効なマテリアルインデックス: {scen.Meshes[index].MaterialIndex}");
                     }
 
                     materials[index] = mat;
                 }
-
                 GO.AddComponent<MeshFilter>().mesh = mesh;
+                //part.AddComponent<MeshCollider>().sharedMesh = mesh; 
                 GO.AddComponent<MeshRenderer>().materials = materials;
             }
-
-
-            catch (Exception ex)
+            else
             {
-                if (!ex.Message.Contains("Unexpected end of file while parsing unknown segment"))
+                Debug.LogWarning($"ファイル {file} の復号化に失敗しました。Assimpがファイルを読み込めませんでした。");
+                return;
+            }
+        }
+        catch (System.Exception e)
+        {
+            //Debug.Log($"暗号化されたモデル {file} の処理中にエラーが発生しました: {e.Message}。Assimpがファイルを読み込めませんでした。");
+        }
+    }
+
+
+    public string XfileStringConverter(string data)
+    {
+        if (!data.Trim().EndsWith("}"))
+        {
+            Debug.Log("文字化けを確認しました");
+            int lastBraceIndex = data.LastIndexOf('}');
+            if (lastBraceIndex != -1)
+            {
+                data = data.Substring(0, lastBraceIndex + 1); // 最後の波括弧を残す
+            }
+            data += "}"; // 新たに波括弧
+            Debug.Log("文字化けを対応しました。");
+        }
+        // FrameTransformMatrixの部分を探す正規表現        
+        string pattern = @"FrameTransformMatrix\s*{([^}]*)}";
+        MatchCollection matches = Regex.Matches(data, pattern, RegexOptions.Singleline);
+
+        if (matches.Count >= 2) // 2回目のマッチが存在するか確認
+        {
+            
+            string matrixContent = matches[1].Groups[1].Value;
+            Debug.Log("マッチしました:" + matrixContent);
+            // 4行目の数値を処理
+            string[] lines = matrixContent.Split(new[] {','}, StringSplitOptions.RemoveEmptyEntries);
+            Debug.Log("要素数は" + lines.Length);
+            if (lines.Length >= 16) // 4行目の数値があるか確認
+            {
+                Debug.Log("4行目を確認しました。");
+                for (int i = 13; i < 16; i++) // 4行目の数値（3つ）を処理
                 {
-                    if(!ex.Message.Contains("Converting invalid MinMaxAABB"))
-                    {
-                    Debug.LogError("モデルのインポート中にエラーが発生しました: " + ex.Message + " ファイル: " + file);
-                    }
+                    lines[i] = lines[i].TrimStart('-'); // マイナス符号を取り除く
+                    Debug.Log("符号排除処理をしました");
                 }
-                else
+
+                // 新しい内容を生成
+                string newMatrixContent = string.Join(",", lines);
+                string output = data.Replace(matrixContent, newMatrixContent);
+                Debug.Log($"書き換えました: {output.Substring(output.Length - 10)}");
+                return output;
+            }
+            else
+            {
+                Debug.Log("4行目の数値が見つかりませんでした。");
+            }
+        }
+        else
+        {
+            Debug.Log("FrameTransformMatrixが見つかりませんでした。");
+        }
+
+
+
+        return data;
+    }
+
+
+    void OutputFrameTransformMatrix(Assimp.Node node, string fileName)
+    {
+        Debug.Log($"ファイル: {fileName} ");
+        var transform = node.Transform;
+        try
+        {
+            if (transform.A1 < 0 || transform.A2 < 0 || transform.A3 < 0 ||
+            transform.B1 < 0 || transform.B2 < 0 || transform.B3 < 0 ||
+            transform.C1 < 0 || transform.C2 < 0 || transform.C3 < 0)
+            {
+                
+                Debug.Log($"マイナス発見: {fileName} に負の変換値があります: {transform}");
+            }else{
+                Debug.Log($"マイナスなし: {fileName} に負の変換値があります: {transform}");
+            }    
+        }catch (System.Exception e)
                 {
-                    Debug.Log("特定のエラーを無視しました: " + ex.Message);
+                    Debug.Log($"発見 {fileName}: {e.Message}");
+                    return;
                 }
-            }
 
-        }
-    }
-        // 頂点座標を丸めるヘルパーメソッド
-    Mesh RoundMeshVertices(Mesh mesh)
-    {
-        Vector3[] vertices = mesh.vertices;
-        for (int i = 0; i < vertices.Length; i++)
-        {
-              vertices[i] = new Vector3(
-              Mathf.Round(vertices[i].x * 1000f) / 1000f,
-              Mathf.Round(vertices[i].y * 1000f) / 1000f,
-              Mathf.Round(vertices[i].z * 1000f) / 1000f);
-        }
-        mesh.vertices = vertices;
-        return mesh;
-    }
-
-
-    // メッシュの頂点データを検証し、必要に応じて修正するメソッド
-    Mesh ValidateAndCorrectMesh(Mesh mesh)
-    {
-        Vector3[] vertices = mesh.vertices;
-        bool isInvalid = false;
-
-        for (int i = 0; i < vertices.Length; i++)
-        {
-            if (float.IsInfinity(vertices[i].x) || float.IsNaN(vertices[i].x) ||
-                float.IsInfinity(vertices[i].y) || float.IsNaN(vertices[i].y) ||
-                float.IsInfinity(vertices[i].z) || float.IsNaN(vertices[i].z))
-            {
-                vertices[i] = Vector3.zero; // 無効なデータをゼロに置き換え
-                isInvalid = true;
-            }
-        }
-
-        if (isInvalid)
-        {
-            mesh.vertices = vertices;
-            mesh.RecalculateBounds();
-        }
-
-        return mesh;
-    }
-
-
-
-    Mesh ImportModel(string file)
-    {
-        if (File.Exists(file))
-        {
-            try
-            {
-                string Modelpath = Path.GetDirectoryName(file);
-
-                var scen = Importer.ImportFile(file, Helper.PostProcessStepflags);
-                Mesh mesh = new Mesh();
-                mesh.CombineMeshes(scen.Meshes.Select(x => new CombineInstance()
-                {
-                    mesh = x.ToUnityMesh(),
-                    transform = scen.RootNode.Transform.ToUnityMatrix()
-                }).ToArray(), false);
-
-
-                return mesh;
-            }
-            catch
-            {
-            }
-        }
-        return null;
-    }
-
-    public GameObject findPart(string partName)
-    {
-        foreach (GameObject p in parts)
-        {
-            if (p.name == partName)
-                return p;
-        }
-        return null;
     }
     public void setPose(hod2v0 pose)
     {
@@ -411,7 +564,7 @@ public class RoboStructure : MonoBehaviour
             updatePart(AnimID, HodID, i);
         }
     }
-    public void updatePart(int AnimID, int HodID, int prtID)
+    public void updatePart(int AnimID, int HodID, int prtID, bool syncRotCont = true)
     {
         if (ani != null)
         {
@@ -419,9 +572,12 @@ public class RoboStructure : MonoBehaviour
             prt.position = parts[prtID].transform.localPosition;
             prt.rotation = parts[prtID].transform.localRotation;
             prt.scale = parts[prtID].transform.localScale;
-            prt.unk1 = parts[prtID].transform.localRotation;
-            prt.unk2 = parts[prtID].transform.localRotation;
-            prt.unk3 = parts[prtID].transform.localRotation;
+            if (syncRotCont)
+            {
+                prt.unk1 = parts[prtID].transform.localRotation;
+                prt.unk2 = parts[prtID].transform.localRotation;
+                prt.unk3 = parts[prtID].transform.localRotation;
+            }
             ani.animations[AnimID].frames[HodID].parts[prtID] = prt;
         }
     }
@@ -458,7 +614,17 @@ public class RoboStructure : MonoBehaviour
         
     }
 
-    
+    public void updateConstraints(int AnimID, int HodID, int prtID, Quaternion c1, Quaternion c2, Quaternion c3)
+    {
+        if (ani != null)
+        {
+            hod2v1_Part prt = ani.animations[AnimID].frames[HodID].parts[prtID];
+            prt.unk1 = c1;
+            prt.unk2 = c2;
+            prt.unk3 = c3;
+            ani.animations[AnimID].frames[HodID].parts[prtID] = prt;
+        }
+    }
     public void addPart(string partName, int parent)
     {
         if (ani != null)
@@ -587,22 +753,7 @@ public class RoboStructure : MonoBehaviour
         ani.save();
     }
 
-    public void saveHOD1()
-    {
-        
-        hod1 sHOD = new hod1("");
-        for (int i = 0; i < parts.Count; i++)
-        {
-            hod2v0_Part prt = hod.parts[i];
-            prt.position = parts[i].transform.localPosition;
-            prt.rotation = parts[i].transform.localRotation;
-            prt.scale = parts[i].transform.localScale;
-            hod.parts[i] = prt;
-        }
-        sHOD.createFromHod2v0(hod);
-        BinaryWriter bw = new BinaryWriter(File.Open(filename, FileMode.OpenOrCreate, FileAccess.ReadWrite));
-        sHOD.saveToBinary(ref bw);
-        bw.Close();
-    }
-    
+
+
+  
 }

@@ -125,15 +125,15 @@ public class UI_DevMode_Select : MonoBehaviour
         md.path = Path.Combine("Windom_Data\\map", mapList[mapDD.value]);
         md.loadmpd();
         
-        RoboLoader rl = player.GetComponent<RoboLoader>();
+        RoboLoader rlp = player.GetComponent<RoboLoader>();
         
-        rl.loadMecha(Path.Combine("Windom_Data\\Robo", roboList[playerDD.value]));
+        rlp.loadMecha(Path.Combine("Windom_Data\\Robo", roboList[playerDD.value]));
         player.transform.position = md.point_0[0];
         player.transform.LookAt(new Vector3(1500, player.transform.position.y, 1500));
         
         
-        rl = cpu.GetComponent<RoboLoader>();
-        rl.loadMecha(Path.Combine("Windom_Data\\Robo", roboList[cpuDD.value]));
+        RoboLoader rlc =  cpu.GetComponent<RoboLoader>();
+        rlc.loadMecha(Path.Combine("Windom_Data\\Robo", roboList[cpuDD.value]));
 
         cpu.transform.position = md.point_1[0];
         cpu.transform.LookAt(new Vector3(1500, cpu.transform.position.y, 1500));

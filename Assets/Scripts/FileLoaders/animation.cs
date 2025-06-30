@@ -137,7 +137,14 @@ public class windomAnimation
         if (frame < frames.Count - 1)
         {
             iPart.position = Vector3.Lerp(frames[frame].parts[part].position, frames[frame + 1].parts[part].position, time);
-            iPart.rotation = Quaternion.Lerp(frames[frame].parts[part].rotation, frames[frame + 1].parts[part].rotation, time);
+            if (Mathf.Approximately(time, 0.0f))
+                iPart.rotation = frames[frame].parts[part].rotation;
+            else if (Mathf.Approximately(time, 1.0f))
+                iPart.rotation = frames[frame + 1].parts[part].rotation;
+            else if (frames[frame].parts[part].rotation.x == 0.0F && frames[frame].parts[part].rotation.y == 0.0F && frames[frame].parts[part].rotation.z == 0.0F && frames[frame].parts[part].rotation.w == 0.0F)
+                iPart.rotation = frames[frame + 1].parts[part].rotation;
+            else
+                iPart.rotation = Quaternion.Lerp(frames[frame].parts[part].rotation, frames[frame + 1].parts[part].rotation, time);
             iPart.scale = Vector3.Lerp(frames[frame].parts[part].scale, frames[frame + 1].parts[part].scale, time);
         }
         else

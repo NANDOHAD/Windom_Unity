@@ -22,6 +22,14 @@ namespace Assets
             Vector3[] vertices = mesh.Vertices.Select(v => new Vector3(v.X, v.Y, v.Z)).ToArray();
             int[] triangles = mesh.GetIndices().Select(i => (int)i).ToArray();
 
+            // ここで三角形の並び順を反転
+            for (int i = 0; i < triangles.Length; i += 3)
+            {
+                int temp = triangles[i + 1];
+                triangles[i + 1] = triangles[i + 2];
+                triangles[i + 2] = temp;
+            }
+
             // 頂点データの検証と修正
             ValidateAndCorrectVertices(vertices);
 
