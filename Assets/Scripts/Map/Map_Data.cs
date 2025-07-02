@@ -27,7 +27,7 @@ public class Map_Data : MonoBehaviour
 	public GameObject HitArea;
 	public GameObject SkyMap;
 	public Assimp.AssimpImporter Importer = new Assimp.AssimpImporter();
-	//public List<Map_PieceBatch> pieceBatchList = new List<Map_PieceBatch>();
+	public List<Map_PieceBatch> pieceBatchList = new List<Map_PieceBatch>();
 	public PieceData[] Pieces;
 	public List<string> scripts = new List<string>();
 	public string path = "E:\\Downloads\\WindomMapsDecoded\\map\\moon";
@@ -275,392 +275,120 @@ public class Map_Data : MonoBehaviour
 			Pieces[index].script = scriptText;
 		}
 	}
-    //public void build()
-    //{
-
-    //	for (int i = 0; i < pieceBatchList.Length; i++)
-    //	{
-    //		if (pieceBatchList[i] != null)
-    //		{
-    //			Debug.Log("Building");
-    //			pieceBatchList[i].destroyGameObjects();
-    //			pieceBatchList[i].generateGameObjects();
-    //		}
-    //	}
-    //}
-
-    void ImportModel(string file, ref Mesh mesh, ref Material[] materials, bool isAlpha = false)	
+    public void build()
     {
-        try
-        {
-            string Modelpath = Path.GetDirectoryName(file);
-            byte[] data = transcoder.Transcode(file);
-            if (data == null)
-            {
-                Debug.Log($"ファイルの変換に失敗しました: {file}。結果がnullです。");
-                return;
-            }
-            if (data.Length == 0)
-            {
-                Debug.Log($"ファイル {file} の変換データが空です。");
-                return;
-            }
-            if (data.Length > 0)
-            {
-                string data1 = System.Text.Encoding.GetEncoding("utf-8").GetString(data);
-                data1 = XfileStringConverter(data1);
-                byte[] data3 = System.Text.Encoding.GetEncoding("utf-8").GetBytes(data1);
-                MemoryStream ms = new MemoryStream(data3);
-                Assimp.Scene scen = null;
-                try
-                {
-                    scen = Importer.ImportFileFromStream(ms, Helper.PostProcessStepflags, "x");
-                }
-                catch (System.Exception e)
-                {
-                    Debug.Log($"暗号化されたモデル {file} のインポート中にエラーが発生しました: {e.Message}。Assimpがファイルを読み込めませんでした。");
-                }
-                if (scen == null)
-                {
-                    Debug.LogWarning($"ストリームからの暗号化されたモデルのインポートに失敗しました: {file}。Assimpがファイルを読み込めませんでした。");
-                    return;
-                }
 
-
-
-                //
-                mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
-                
-                try
-                {
-                    mesh.CombineMeshes(scen.Meshes.Select(x => {
-                        var transform = scen.RootNode.Transform;
-                        // 変換行列から負の値をチェックし、必要に応じて調整
-                        if (transform.A1 < 0 || transform.A2 < 0 || transform.A3 < 0 ||
-                            transform.B1 < 0 || transform.B2 < 0 || transform.B3 < 0 ||
-                            transform.C1 < 0 || transform.C2 < 0 || transform.C3 < 0)
-                        {
-                            // 負の値が含まれている場合は単位行列を使用
-                            transform = Assimp.Matrix4x4.Identity;
-                        }
-
-                        return new CombineInstance()
-                        {
-                            mesh = x.ToUnityMesh(),
-                            transform = transform.ToUnityMatrix()
-                        };
-                    }).ToArray(), false);
-                }
-                catch (System.Exception e)
-                {
-                    Debug.LogWarning($"ファイル {file} のメッシュ結合に失敗しました: {e.Message}");
-                    return;
-                }
-                
-                Material[] materials = new Material[scen.Meshes.Length];
-
-                for (int index = 0; index < materials.Length; index++)
-                {
-                    var mat = new Material(Shader.Find("Standard"));
-                    if (mat == null)
-                    {
-                        Debug.LogWarning($"マテリアルのシェーダーが見つかりません: {file}");
-                        return;
-                    }
-
-                    if (scen.Meshes[index].MaterialIndex < scen.Materials.Length)
-                    {
-                        if (scen.Materials[scen.Meshes[index].MaterialIndex] != null)
-                        {
-							if (isAlpha)
-								mat.CopyPropertiesFromMaterial(baseMat);
-                            mat.name = scen.Materials[scen.Meshes[index].MaterialIndex].Name;
-                            var textures = scen.Materials[scen.Meshes[index].MaterialIndex].GetAllTextures();
-                            var color = scen.Materials[scen.Meshes[index].MaterialIndex].ColorDiffuse;
-                            mat.color = new Color(color.R, color.G, color.B, color.A);
-                            mat.SetFloat("_Glossiness", scen.Materials[scen.Meshes[index].MaterialIndex].ShininessStrength);
-
-                            // シェーダーが設定されていない場合、デフォルトのシェーダーを割り当てる
-                            if (string.IsNullOrEmpty(mat.shader.name) || mat.shader == null)
-                            {
-                                Debug.LogWarning($"マテリアル {mat.name} のシェーダーが設定されていません。デフォルトのシェーダーを割り当てます。");
-                                mat.shader = Shader.Find("Standard"); // デフォルトのシェーダーを設定
-                            }
-
-                            if (textures.Length > 0 && File.Exists(Path.Combine(Modelpath, textures[0].FilePath)))
-                            {
-                                try
-                                {
-                                    mat.mainTexture = Helper.LoadTextureEncrypted(Path.Combine(Modelpath, textures[0].FilePath), ref transcoder);
-                                }
-                                catch (System.Exception e)
-                                {
-                                    Debug.LogWarning($"ファイル {file} のテクスチャ読み込みに失敗しました: {e.Message}");
-                                }
-                            }
-                            else
-                            {
-                                Debug.LogWarning($"マテリアルインデックス {scen.Meshes[index].MaterialIndex} のテクスチャが見つかりません");
-                            }
-                        }
-                    }
-                    else
-                    {
-                        Debug.LogWarning($"メッシュ {index} の無効なマテリアルインデックス: {scen.Meshes[index].MaterialIndex}");
-                    }
-
-                    materials[index] = mat;
-                }
-                GO.AddComponent<MeshFilter>().mesh = mesh;
-                //part.AddComponent<MeshCollider>().sharedMesh = mesh; 
-                GO.AddComponent<MeshRenderer>().materials = materials;
-            }
-            else
-            {
-                Debug.LogWarning($"ファイル {file} の復号化に失敗しました。Assimpがファイルを読み込めませんでした。");
-                return;
-            }
-        }
-        catch (System.Exception e)
-        {
-            //Debug.Log($"暗号化されたモデル {file} の処理中にエラーが発生しました: {e.Message}。Assimpがファイルを読み込めませんでした。");
-        }
+    	for (int i = 0; i < pieceBatchList.Count; i++)
+    	{
+    		if (pieceBatchList[i] != null)
+    		{
+    			//Debug.Log("[build] ビルドを開始します");
+    			pieceBatchList[i].destroyGameObjects();
+    			pieceBatchList[i].generateGameObjects();
+    		}
+    	}
     }
 
-    void ImportModel3(GameObject GO, string file, bool isAlpha = false)
+
+
+
+
+
+
+
+    Mesh ImportModel(string file)
     {
+        //Debug.Log($"[ImportModel(Mesh)] モデルのインポートを開始します: {file}");
         if (File.Exists(file))
         {
             try
             {
-                string Modelpath = Path.GetDirectoryName(file);
-                var scen = Importer.ImportFile(file, Helper.PostProcessStepflags);
-                if (scen == null)
-                {
-                    Debug.LogWarning($"モデルのインポートに失敗しました: {file}。Assimpがファイルを読み込めませんでした。");
-                    return;
-                }
+				string Modelpath = Path.GetDirectoryName(file);
+                Debug.Log($"[ImportModel(Mesh)] モデルパス: {Modelpath}");
+				byte[] data = transcoder.Transcode(file);
+				if (data == null)
+				{
+					Debug.Log($"ファイルの変換に失敗しました: {file}。結果がnullです。");
+					return null;
+				}
+				if (data.Length == 0)
+				{
+					Debug.Log($"ファイル {file} の変換データが空です。");
+					return null;
+				}
+				if (data.Length > 0)
+				{
+					string data1 = System.Text.Encoding.GetEncoding("utf-8").GetString(data);
+					data1 = XfileStringConverter(data1);
+					byte[] data3 = System.Text.Encoding.GetEncoding("utf-8").GetBytes(data1);
+					MemoryStream ms = new MemoryStream(data3);
+					Assimp.Scene scen = null;
+					try
+					{
+						scen = Importer.ImportFileFromStream(ms, Helper.PostProcessStepflags, "x");
+					}
+					catch (System.Exception e)
+					{
+						Debug.Log($"暗号化されたモデル {file} のインポート中にエラーが発生しました: {e.Message}。Assimpがファイルを読み込めませんでした。");
+					}
+					if (scen == null)
+					{
+						Debug.LogError("Assimpがファイルを読み込めませんでした: " + file);
+						return null;
+					}
+					if (scen.Meshes.Count() == 0) {
+						Debug.LogError("メッシュが存在しません: " + file);
+						return null;
+					}
 
-                Mesh mesh = new Mesh();
-                mesh.CombineMeshes(scen.Meshes.Select(x => new CombineInstance()
-                {
-                    mesh = x.ToUnityMesh(),
-                    transform = scen.RootNode.Transform.ToUnityMatrix()
-                }).ToArray(), false);
+				
+					//var scen = Importer.ImportFile(file, Helper.PostProcessStepflags);
+					//Debug.Log($"[ImportModel(Mesh)] シーンのインポートに成功しました: {file}");
+					Mesh mesh = new Mesh();
+					var combineInstances = scen.Meshes
+						.Select(x => x.ToUnityMesh())
+						.Where(unityMesh => unityMesh != null)
+						.Select(unityMesh => new CombineInstance {
+							mesh = unityMesh,
+							transform = scen.RootNode.Transform.ToUnityMatrix()
+						})
+						.ToArray();
 
-                Material[] materials = new Material[scen.Meshes.Length];
+					if (combineInstances.Length == 0) {
+						Debug.LogError($"No valid meshes to combine in file: {file}");
+						return null;
+					}
 
-                for (int index = 0; index < materials.Length; index++)
-                {
-                    var mat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-
-                    if (scen.Meshes[index].MaterialIndex < scen.Materials.Length)
-                    {
-                        if (scen.Materials[scen.Meshes[index].MaterialIndex] != null)
-                        {
-							if (isAlpha)
-								mat.CopyPropertiesFromMaterial(baseMat);
-                            mat.name = scen.Materials[scen.Meshes[index].MaterialIndex].Name;
-                            var textures = scen.Materials[scen.Meshes[index].MaterialIndex].GetAllTextures();
-                            var color = scen.Materials[scen.Meshes[index].MaterialIndex].ColorDiffuse;
-                            mat.color = new Color(color.R, color.G, color.B, color.A);
-                            mat.SetFloat("_Glossiness", scen.Materials[scen.Meshes[index].MaterialIndex].ShininessStrength);
-
-
-                            if (textures.Length > 0 && File.Exists(Path.Combine(Modelpath, textures[0].FilePath)))
-                            {
-                                try
-                                {
-                                    mat.mainTexture = Helper.LoadTexture(Path.Combine(Modelpath, textures[0].FilePath));
-                                }
-                                catch
-                                {
-                                }
-                            }
-                        }
-                    }
-                    else
-                    {
-                        Debug.LogWarning($"メッシュ {index} の無効なマテリアルインデックス: {scen.Meshes[index].MaterialIndex}");
-                    }
-
-                    materials[index] = mat;
-                }
-
-                GO.AddComponent<MeshFilter>().mesh = mesh;
-                //part.AddComponent<MeshCollider>().sharedMesh = mesh; 
-                GO.AddComponent<MeshRenderer>().materials = materials;
+					mesh.CombineMeshes(combineInstances, false);
+					//Debug.Log($"[ImportModel(Mesh)] メッシュの結合に成功しました: {file}");
+					//Debug.Log($"[ImportModel(Mesh)] モデルのインポートが完了しました: {file}");
+					return mesh;
+				}
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                Debug.Log($"モデル {file} のインポート中にエラーが発生しました: {e.Message}。Assimpがファイルを読み込めませんでした。");
+                Debug.LogError($"[ImportModel(Mesh)] モデルのインポート中にエラーが発生しました: {file} エラー: {ex.Message}");
             }
         }
+        else
+        {
+            Debug.LogError($"[ImportModel(Mesh)] ファイルが存在しません: {file}");
+        }
+		//Debug.Log($"[ImportModel(Mesh)] モデルのインポートが完了しました: {file}");
+        return null;
     }
-
-
-    void ImportModel2(GameObject GO, string file, bool isAlpha = false)
-	{
-		if (File.Exists(file))
-		{
-			
-			try
-			{
-				string Modelpath = Path.GetDirectoryName(file);
-
-				var scen = Importer.ImportFile(file, Helper.PostProcessStepflags);
-				Mesh mesh = new Mesh();
-				mesh.CombineMeshes(scen.Meshes.Select(x => new CombineInstance()
-				{
-					mesh = x.ToUnityMesh(),
-					transform = scen.RootNode.Transform.ToUnityMatrix()
-				}).ToArray(), false);
-				Material[] materials = new Material[scen.Meshes.Length];
-
-				for (int index = 0; index < materials.Length; index++)
-				{
-					var mat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-
-					if (scen.Materials[scen.Meshes[index].MaterialIndex] != null)
-					{
-						if (isAlpha)
-							mat.CopyPropertiesFromMaterial(baseMat);
-						mat.name = scen.Materials[scen.Meshes[index].MaterialIndex].Name;
-						var textures = scen.Materials[scen.Meshes[index].MaterialIndex].GetAllTextures();
-						var color = scen.Materials[scen.Meshes[index].MaterialIndex].ColorDiffuse;
-						mat.color = new Color(color.R, color.G, color.B, color.A);
-						//mat.SetFloat("_Glossiness", scen.Materials[scen.Meshes[index].MaterialIndex].ShininessStrength);
-
-
-						if (textures.Length > 0 && File.Exists(Path.Combine(Modelpath, textures[0].FilePath)))
-						{
-							try
-							{
-								FileInfo f = new FileInfo(Path.Combine(Modelpath, textures[0].FilePath));
-								if (f.Extension == ".dds")
-									mat.mainTexture = DdsTextureLoader.LoadTexture(f.FullName);
-								else
-									mat.mainTexture = Helper.LoadTexture(f.FullName);
-							}
-							catch
-							{
-							}
-						}
-					}
-
-					materials[index] = mat;
-				}
-
-				GO.AddComponent<MeshFilter>().mesh = mesh;
-				//part.AddComponent<MeshCollider>().sharedMesh = mesh; 
-				GO.AddComponent<MeshRenderer>().materials = materials;
-			}
-			catch
-			{
-			}
-		}
-	}
-
-	void ImportModel3(string file, ref Mesh mesh, ref Material[] materials, bool isAlpha = false)
-	{
-		
-		if (File.Exists(file))
-		{
-		
-			try
-			{
-				string Modelpath = Path.GetDirectoryName(file);
-
-				var scen = Importer.ImportFile(file, Helper.PostProcessStepflags);
-				mesh.CombineMeshes(scen.Meshes.Select(x => new CombineInstance()
-				{
-					mesh = x.ToUnityMesh(),
-					transform = scen.RootNode.Transform.ToUnityMatrix()
-				}).ToArray(), false);
-				materials = new Material[scen.Meshes.Length];
-				Debug.Log(materials.Length);
-				for (int index = 0; index < materials.Length; index++)
-				{
-					var mat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-
-					if (scen.Materials[scen.Meshes[index].MaterialIndex] != null)
-					{
-						if (isAlpha)
-							mat.CopyPropertiesFromMaterial(baseMat);
-						mat.name = scen.Materials[scen.Meshes[index].MaterialIndex].Name;
-						var textures = scen.Materials[scen.Meshes[index].MaterialIndex].GetAllTextures();
-
-
-
-						if (textures.Length > 0 && File.Exists(Path.Combine(Modelpath, textures[0].FilePath)))
-						{
-							try
-							{
-								FileInfo f = new FileInfo(Path.Combine(Modelpath, textures[0].FilePath));
-								if (f.Extension == ".dds")
-								{
-									mat.mainTexture = DdsTextureLoader.LoadTexture(f.FullName);
-									mat.SetTextureScale("_MainTex", new Vector2(1, -1));
-								}
-								else
-									mat.mainTexture = Helper.LoadTexture(f.FullName);
-							}
-							catch
-							{
-							}
-						}
-					}
-
-					materials[index] = mat;
-				}
-			}
-			catch
-			{
-			}
-		}
-		else
-		{
-			//Debug.Log("File Doesn't Exist");
-		}
-	}
-
-	Mesh ImportModel(string file)
-	{
-		if (File.Exists(file))
-		{
-			try
-			{
-				string Modelpath = Path.GetDirectoryName(file);
-
-				var scen = Importer.ImportFile(file, Helper.PostProcessStepflags);
-				Mesh mesh = new Mesh();
-				mesh.CombineMeshes(scen.Meshes.Select(x => new CombineInstance()
-				{
-					mesh = x.ToUnityMesh(),
-					transform = scen.RootNode.Transform.ToUnityMatrix()
-				}).ToArray(), false);
-
-
-				return mesh;
-			}
-			catch
-			{
-			}
-		}
-		return null;
-	}
     public string XfileStringConverter(string data)
     {
         if (!data.Trim().EndsWith("}"))
         {
-            Debug.Log("文字化けを確認しました");
+            //Debug.Log("文字化けを確認しました");
             int lastBraceIndex = data.LastIndexOf('}');
             if (lastBraceIndex != -1)
             {
                 data = data.Substring(0, lastBraceIndex + 1); // 最後の波括弧を残す
             }
             data += "}"; // 新たに波括弧
-            Debug.Log("文字化けを対応しました。");
+            //Debug.Log("文字化けを対応しました。");
         }
         // FrameTransformMatrixの部分を探す正規表現        
         string pattern = @"FrameTransformMatrix\s*{([^}]*)}";
@@ -704,9 +432,153 @@ public class Map_Data : MonoBehaviour
         return data;
     }
 
-	//Texture2D LoadDDS(string file)
- //   {
-	//	byte[] data = File.ReadAllBytes(file);
-		
- //   }
+	void ImportModel(string file, ref Mesh meshes, ref Material[] materiales, bool isAlpha = false)
+    {
+        try
+        {
+            string Modelpath = Path.GetDirectoryName(file);
+            byte[] data = transcoder.Transcode(file);
+            if (data == null)
+            {
+                Debug.LogError($"[ImportModel] data==null: {file}");
+                return;
+            }
+            if (data.Length == 0)
+            {
+                Debug.Log($"ファイル {file} の変換データが空です。");
+                return;
+            }
+            if (data.Length > 0)
+            {
+                string data1 = System.Text.Encoding.GetEncoding("utf-8").GetString(data);
+                data1 = XfileStringConverter(data1);
+                byte[] data3 = System.Text.Encoding.GetEncoding("utf-8").GetBytes(data1);
+                MemoryStream ms = new MemoryStream(data3);
+                Assimp.Scene scen = null;
+                try
+                {
+                    scen = Importer.ImportFileFromStream(ms, Helper.PostProcessStepflags, "x");
+                }
+                catch (System.Exception e)
+                {
+                	Debug.Log($"暗号化されたモデル {file} のインポート中にエラーが発生しました: {e.Message}。Assimpがファイルを読み込めませんでした。");
+                }
+                if (scen == null)
+                {
+                    Debug.LogWarning($"ストリームからの暗号化されたモデルのインポートに失敗しました: {file}。Assimpがファイルを読み込めませんでした。");
+                    return;
+                }
+                if (scen.Meshes.Count() == 0) {
+                    Debug.LogError("メッシュが存在しません: " + file);
+                    return;
+                }
+
+
+
+                Mesh mesh = new Mesh();
+                mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+                
+                try
+                {
+                    mesh.CombineMeshes(scen.Meshes.Select(x => {
+                        var transform = scen.RootNode.Transform;
+                        // 変換行列から負の値をチェックし、必要に応じて調整
+                        if (transform.A1 < 0 || transform.A2 < 0 || transform.A3 < 0 ||
+                            transform.B1 < 0 || transform.B2 < 0 || transform.B3 < 0 ||
+                            transform.C1 < 0 || transform.C2 < 0 || transform.C3 < 0)
+                        {
+                            // 負の値が含まれている場合は単位行列を使用
+                            transform = Assimp.Matrix4x4.Identity;
+                        }
+
+                        return new CombineInstance()
+                        {
+                            mesh = x.ToUnityMesh(),
+                            transform = transform.ToUnityMatrix()
+                        };
+                    }).ToArray(), false);
+                }
+                catch (System.Exception e)
+                {
+                    Debug.Log($"ファイル {file} のメッシュ結合に失敗しました: {e.Message}");
+                    return;
+                }
+                
+                Material[] materials = new Material[scen.Meshes.Length];
+
+                for (int index = 0; index < materials.Length; index++)
+                {
+                    var mat = new Material(Shader.Find("Standard"));
+                    if (mat.shader == null) {
+                        Debug.LogError("Standardシェーダーが見つかりません。");
+                        // 必要なら代替シェーダーを指定
+                    }
+
+                    if (scen.Meshes[index].MaterialIndex < scen.Materials.Length)
+                    {
+                        if (scen.Materials[scen.Meshes[index].MaterialIndex] != null)
+                        {
+							if (isAlpha)
+                            	mat.CopyPropertiesFromMaterial(baseMat);
+                            mat.name = scen.Materials[scen.Meshes[index].MaterialIndex].Name;
+                            var textures = scen.Materials[scen.Meshes[index].MaterialIndex].GetAllTextures();
+                            var color = scen.Materials[scen.Meshes[index].MaterialIndex].ColorDiffuse;
+                            mat.color = new Color(color.R, color.G, color.B, color.A);
+                            mat.SetFloat("_Glossiness", scen.Materials[scen.Meshes[index].MaterialIndex].ShininessStrength);
+
+                            // シェーダーが設定されていない場合、デフォルトのシェーダーを割り当てる
+                            if (string.IsNullOrEmpty(mat.shader.name) || mat.shader == null)
+                            {
+                                Debug.LogWarning($"マテリアル {mat.name} のシェーダーが設定されていません。デフォルトのシェーダーを割り当てます。");
+                                mat.shader = Shader.Find("Standard"); // デフォルトのシェーダーを設定
+                            }
+
+                            if (textures.Length > 0 && File.Exists(Path.Combine(Modelpath, textures[0].FilePath)))
+                            {
+                                try
+                                {
+                                    mat.mainTexture = Helper.LoadTextureEncrypted(Path.Combine(Modelpath, textures[0].FilePath), ref transcoder);
+                                }
+                                catch (System.Exception e)
+                                {
+                                    Debug.LogWarning($"ファイル {file} のテクスチャ読み込みに失敗しました: {e.Message}");
+                                }
+                            }
+                            else
+                            {
+                                //Debug.Log($"マテリアルインデックス {scen.Meshes[index].MaterialIndex} にはテクスチャが設定されていません: {file}");
+                            }
+                        }
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"メッシュ {index} の無効なマテリアルインデックス: {scen.Meshes[index].MaterialIndex}");
+                    }
+
+                    materials[index] = mat;
+                }
+                meshes = mesh;
+                //part.AddComponent<MeshCollider>().sharedMesh = mesh; 
+                materiales = materials;
+            }
+            else
+            {
+                Debug.LogWarning($"ファイル {file} の復号化に失敗しました。Assimpがファイルを読み込めませんでした。");
+                return;
+            }
+        }
+        catch (System.Exception e)
+        {
+            //Debug.Log($"暗号化されたモデル {file} の処理中にエラーが発生しました: {e.Message}。Assimpがファイルを読み込めませんでした。");
+        }
+    }
+
+	Texture2D LoadDDS(string file)
+    {
+		byte[] data = File.ReadAllBytes(file);
+		Texture2D texture = new Texture2D(2, 2, TextureFormat.ARGB32, false);
+		texture.LoadRawTextureData(data);
+		texture.Apply();
+		return texture;
+    }
 }

@@ -10,6 +10,8 @@ public struct SPT_BURNERSET
     public int id;
     public string part;
     public float size;
+    public string vctr;
+    
 }
 
 public struct Weapon_Data
@@ -63,6 +65,7 @@ public class SPT_Data
             b.id = Mathf.RoundToInt(values[0].num);
             b.part = values[1].str;
             b.size = values[2].num;
+            b.vctr = values[3].str;
             burnerList.Add(b);
         }
     }

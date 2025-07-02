@@ -9,6 +9,7 @@ public class RoboLoader : MonoBehaviour
     public GameObject Robo;
     public SPT_Data RoboData;
     public GameObject Thruster;
+    public GameObject NoThruster;
     // Start is called before the first frame update
     void Start()
     {
@@ -32,10 +33,10 @@ public class RoboLoader : MonoBehaviour
         {
             rs.ani.load(Path.Combine(folder, "Script.ani"));
             rs.buildStructure(Path.Combine(folder, "Script.ani"));
-            Debug.Log("Load ANI File");
+            Debug.Log("ANIファイルを読み込みました");
         }
         else
-            Debug.Log("Missing ANI File");
+            Debug.Log("ANIファイルが見つかりません");
         MechaAnimator anim = Robo.GetComponent<MechaAnimator>();
         MechaMovement mm = Robo.GetComponent<MechaMovement>();
         StateManager sm = Robo.GetComponent<StateManager>();
@@ -48,12 +49,12 @@ public class RoboLoader : MonoBehaviour
         if (File.Exists(Path.Combine(folder, "Script.spt")))
         {
             RoboData.readSPT(Path.Combine(folder, "Script.spt"));
-            Debug.Log("Load SPT File");
+            Debug.Log("SPTファイルを読み込みました");
             Debug.Log(RoboData.burnerList);
             Debug.Log(RoboData.burnerList.Count);
         }
         else
-            Debug.Log("Missing SPT File");
+            Debug.Log("SPTファイルが見つかりません");
         
         //attach thrusters data
         int prtCount = rs.parts.Count;
@@ -62,17 +63,36 @@ public class RoboLoader : MonoBehaviour
             for (int j = 0; j < prtCount; j++)
             {
                 if (RoboData.burnerList[i].part == rs.parts[j].name)
-                {                 
-                    GameObject n = Instantiate<GameObject>(Thruster);
-                    
-                
-                    n.transform.parent = rs.parts[j].transform;
-                    n.transform.localPosition = new Vector3(0, 0, 0);
-                    n.transform.localRotation = Quaternion.identity;
-                    n.transform.localScale = new Vector3(0.1f * RoboData.burnerList[i].size, 0.1f * RoboData.burnerList[i].size, 0.1f * RoboData.burnerList[i].size);
-                    mm.Thrusters.Add(RoboData.burnerList[i].id, n);
-                  
-                    break;
+                {        
+                    if (Mathf.Approximately(RoboData.burnerList[i].size, 0.0f))
+                    {
+                        GameObject n = Instantiate<GameObject>(NoThruster);
+                        Debug.Log("バーニアポイント登録をスキップします");
+                        n.transform.parent = rs.parts[j].transform;
+                        n.transform.localPosition = new Vector3(0, 0, 0);
+                        // vctrがDOWNならZ軸180度回転、UPならそのまま
+                        if (RoboData.burnerList[i].vctr == "DOWN")
+                            n.transform.localRotation = Quaternion.Euler(0, 0, 180);
+                        else // "UP"
+                            n.transform.localRotation = Quaternion.identity;  
+                        n.transform.localScale = new Vector3(0.1f * RoboData.burnerList[i].size, 0.1f * RoboData.burnerList[i].size, 0.1f * RoboData.burnerList[i].size);
+                        mm.Thrusters.Add(RoboData.burnerList[i].id, n);
+                        break;
+                    }
+                    else
+                    {
+                        GameObject n = Instantiate<GameObject>(Thruster);
+                        n.transform.parent = rs.parts[j].transform;
+                        n.transform.localPosition = new Vector3(0, 0, 0);
+                        // vctrがDOWNならZ軸180度回転、UPならそのまま
+                        if (RoboData.burnerList[i].vctr == "DOWN")
+                            n.transform.localRotation = Quaternion.Euler(0, 0, 180);
+                        else // "UP"
+                            n.transform.localRotation = Quaternion.identity;  
+                        n.transform.localScale = new Vector3(0.1f * RoboData.burnerList[i].size, 0.1f * RoboData.burnerList[i].size, 0.1f * RoboData.burnerList[i].size);
+                        mm.Thrusters.Add(RoboData.burnerList[i].id, n);
+                        break;
+                    }
                 }
             }
         }

@@ -1,0 +1,116 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 6
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: reroLitDecalMaterial 2
+  m_Shader: {fileID: 4800000, guid: 553a2627f5c0c5a41b3ffb4a8fa52ca8, type: 3}
+  m_ShaderKeywords: DECAL_ON _DISSOLVESPACE_OBJECT _OUTLINEENABLED_ON _SPECULAREDGE_ON
+    _SPECULAR_EDGE
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: 2999
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _BumpMap:
+        m_Texture: {fileID: 2800000, guid: f5b0969617b82d641a3a895a7fe633b8, type: 3}
+        m_Scale: {x: 0.1, y: 0.1}
+        m_Offset: {x: 0, y: 0}
+    - _Detail:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Diffuse:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _FallbackCube:
+        m_Texture: {fileID: 8900000, guid: 6819af48adfdad646baa690e6ac48274, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Lightramp:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _MainTex:
+        m_Texture: {fileID: 2800000, guid: be45669fcd3043240a17775174bcfda6, type: 3}
+        m_Scale: {x: 0.025, y: 0.025}
+        m_Offset: {x: 0.43, y: 0.5}
+    - _MaskTex:
+        m_Texture: {fileID: 2800000, guid: be45669fcd3043240a17775174bcfda6, type: 3}
+        m_Scale: {x: 0.025, y: 0.025}
+        m_Offset: {x: 0.43, y: 0.5}
+    - _NoiseTex:
+        m_Texture: {fileID: 2800000, guid: 3e4c2d436ad541478f4265486459c9e2, type: 3}
+        m_Scale: {x: 0.05, y: 0.05}
+        m_Offset: {x: 0, y: 0}
+    - _Normal:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Specular:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _texcoord:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Floats:
+    - ClipAlpha: 0
+    - Decal: 1
+    - DistortTex: 0
+    - Emiss: 0
+    - _AmbientOcclusion: 0
+    - _Angle: 0
+    - _BasemapAlphaPhongMask: 0
+    - _Blend2: 10
+    - _ClipAlpha: 1
+    - _ClipLevel: 0.499
+    - _Decal: 1
+    - _DetailBlendFactor: 0.01
+    - _DetailBlendMode: 6
+    - _Diffuse: 0
+    - _DissolveSpace: 0
+    - _DistSize: 0
+    - _DistSpeed: 0
+    - _DistortTex: 0
+    - _Edges: 0.1
+    - _Emiss: 0
+    - _GreyscaleSpecular: 0
+    - _InvertPhongMask: 0
+    - _Level: 0
+    - _MaskAlpha: 1
+    - _MaxRange: 21.53
+    - _Normal: 1
+    - _RangeHardness: 0
+    - _RimlightingBoost: 1
+    - _RimlightingExponent: 1
+    - _Roughness: 0
+    - _Sharpness: 4
+    - _Shininess: 100
+    - _SpecularBoost: 1
+    - _SpecularExponent: 1
+    - _UseAmbientOcclusion: 0
+    - _UseDetail: 0
+    - _UseHalfLambertLighting: 0
+    - _UseLightwarp: 0
+    - _UseLightwarpOnSpecular: 1
+    - _UseRimlighting: 1
+    - __dirty: 1
+    m_Colors:
+    - _AmbColor: {r: 1, g: 1, b: 1, a: 1}
+    - _DifColor: {r: 1, g: 1, b: 1, a: 1}
+    - _EdgeColor1: {r: 1, g: 1, b: 1, a: 0}
+    - _EdgeColor2: {r: 1, g: 1, b: 1, a: 0}
+    - _FakeLightDir: {r: 0.5, g: 0.5, b: 0.5, a: 1}
+    - _FresnelRanges: {r: 0, g: 0.5, b: 1, a: 0}
+    - _SpecuColor: {r: 1, g: 1, b: 1, a: 1}
