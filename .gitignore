@@ -221,3 +221,9 @@ Windom_data/map/01/yeukm46.png
 Windom_data/map/01/yeukm47.png
 Windom_data/map/01/zhuzi.x
 Windom_data/map/01/zhuzihit.x
+Windom_data/*
+debug.txt
+assimp32.dll
+.vsconfig
+Assets/_Custom Effects/*
+Assets/.specstory/*
